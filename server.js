@@ -127,7 +127,7 @@ app.get('*', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html
 
 const sockets = new Map(); // socket.id -> username
 const userSockets = new Map(); // username -> Set(socket.id)
-const voice = new Map(); // channelId -> Map(socket.id, {username, screen})
+const voice = new Map(); // channelId -> Map(socket.id, {username, screen, muted})
 
 function addUserSocket(username, sid) {
   if (!userSockets.has(username)) userSockets.set(username, new Set());
@@ -473,8 +473,8 @@ io.on('connection', (socket) => {
     if (!c || !c.members.includes(socket.data.username)) return cb({ ok: false, error: 'Voice channel tidak valid.' });
     if (!voice.has(channelId)) voice.set(channelId, new Map());
     const room = voice.get(channelId);
-    const existing = [...room.entries()].map(([sid, v]) => ({ socketId: sid, username: v.username, screen: !!v.screen }));
-    room.set(socket.id, { username: socket.data.username, screen: false });
+    const existing = [...room.entries()].map(([sid, v]) => ({ socketId: sid, username: v.username, screen: !!v.screen, muted: !!v.muted }));
+    room.set(socket.id, { username: socket.data.username, screen: false, muted: !!data?.muted });
     socket.join(`voice:${channelId}`);
     socket.data.voiceChannel = channelId;
     db.users[socket.data.username].stats.callsJoined = (db.users[socket.data.username].stats.callsJoined || 0) + 1;
@@ -488,6 +488,15 @@ io.on('connection', (socket) => {
 
   socket.on('voice:leave', (_, cb = () => {}) => {
     leaveVoice(socket);
+    cb({ ok: true });
+  });
+
+  socket.on('voice:mute', (data, cb = () => {}) => {
+    const ch = socket.data.voiceChannel;
+    if (!ch || !voice.has(ch)) return cb({ ok: false });
+    const room = voice.get(ch);
+    if (room.has(socket.id)) room.get(socket.id).muted = !!data?.muted;
+    broadcastVoice(ch);
     cb({ ok: true });
   });
 
@@ -525,7 +534,7 @@ io.on('connection', (socket) => {
 
 function broadcastVoice(channelId) {
   const room = voice.get(channelId) || new Map();
-  const participants = [...room.entries()].map(([socketId, v]) => ({ socketId, username: v.username, screen: !!v.screen, avatar: db.users[v.username]?.avatar || '' }));
+  const participants = [...room.entries()].map(([socketId, v]) => ({ socketId, username: v.username, screen: !!v.screen, muted: !!v.muted, avatar: db.users[v.username]?.avatar || '' }));
   io.to(`voice:${channelId}`).emit('voice:participants', { channelId, participants });
 }
 function leaveVoice(socket) {

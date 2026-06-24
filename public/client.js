@@ -15,6 +15,7 @@ const state = {
   voiceChannel: null,
   localStream: null,
   screenStream: null,
+  voiceMuted: false,
   peers: new Map(),
   musicMode: localStorage.getItem('ryuu_music_mode') || 'host',
   musicVolume: Number(localStorage.getItem('ryuu_music_volume') || 70),
@@ -223,20 +224,128 @@ $('#roomStopBtn').onclick=()=> state.currentCommunity && socket.emit('music:room
 const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] };
 $('#joinVoiceBtn').onclick = joinVoice;
 $('#leaveVoiceBtn').onclick = leaveVoice;
+$('#muteVoiceBtn').onclick = toggleMute;
 $('#shareScreenBtn').onclick = startScreenShare;
-async function getMic(){ if(state.localStream) return state.localStream; state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); return state.localStream; }
-async function joinVoice(){ if(!state.voiceChannel){ const vc = state.currentCommunity?.channels.find(ch=>ch.type==='voice'); if(vc) state.voiceChannel = vc.id; else return toast('Tidak ada voice channel','bad'); } try{ await getMic(); socket.emit('voice:join',{channelId:state.voiceChannel},(r)=>{ if(!r.ok)return toast(r.error,'bad'); toast('Join voice'); }); }catch(e){ toast('Microphone ditolak/browser butuh HTTPS','bad'); }}
-function leaveVoice(){ socket.emit('voice:leave'); for(const pc of state.peers.values()) pc.close(); state.peers.clear(); state.localStream?.getTracks().forEach(t=>t.stop()); state.localStream=null; state.screenStream?.getTracks().forEach(t=>t.stop()); state.screenStream=null; $('#voiceState').innerHTML='<p>Keluar dari voice.</p>'; }
-function createPeer(socketId, initiator){ const pc = new RTCPeerConnection(rtcConfig); state.peers.set(socketId, pc); state.localStream?.getTracks().forEach(t=>pc.addTrack(t,state.localStream)); state.screenStream?.getTracks().forEach(t=>pc.addTrack(t,state.screenStream)); pc.onicecandidate = e=>{ if(e.candidate) socket.emit('voice:signal',{to:socketId,signal:{candidate:e.candidate}}); }; pc.ontrack = e=>{ const [stream]=e.streams; if(e.track.kind==='audio') attachAudio(socketId, stream); if(e.track.kind==='video') attachScreen(socketId, stream); }; if(initiator){ pc.onnegotiationneeded = async()=>{ try{ const offer=await pc.createOffer(); await pc.setLocalDescription(offer); socket.emit('voice:signal',{to:socketId,signal:{sdp:pc.localDescription}}); }catch(e){} }; } return pc; }
-function attachAudio(id, stream){ let a=document.getElementById('audio_'+id); if(!a){ a=document.createElement('audio'); a.id='audio_'+id; a.autoplay=true; a.playsInline=true; document.body.appendChild(a); } a.srcObject=stream; }
-function attachScreen(id, stream){ $('#screenDock').classList.remove('hidden'); let v=document.getElementById('screen_'+id); if(!v){ v=document.createElement('video'); v.id='screen_'+id; v.autoplay=true; v.playsInline=true; v.controls=true; $('#remoteScreens').appendChild(v); } v.srcObject=stream; }
+async function getMic(){
+  if(state.localStream) return state.localStream;
+  state.localStream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    video: false
+  });
+  state.localStream.getAudioTracks().forEach(t => t.enabled = !state.voiceMuted);
+  updateMuteUI();
+  return state.localStream;
+}
+async function joinVoice(){
+  if(!state.voiceChannel){ const vc = state.currentCommunity?.channels.find(ch=>ch.type==='voice'); if(vc) state.voiceChannel = vc.id; else return toast('Tidak ada voice channel','bad'); }
+  try{
+    await getMic();
+    socket.emit('voice:join',{channelId:state.voiceChannel, muted: state.voiceMuted},(r)=>{ if(!r.ok)return toast(r.error,'bad'); toast('Join voice'); updateMuteUI(); });
+  }catch(e){ toast('Microphone ditolak/browser butuh HTTPS','bad'); }
+}
+function leaveVoice(){
+  socket.emit('voice:leave');
+  for(const pc of state.peers.values()) pc.close();
+  state.peers.clear();
+  state.localStream?.getTracks().forEach(t=>t.stop()); state.localStream=null;
+  state.screenStream?.getTracks().forEach(t=>t.stop()); state.screenStream=null;
+  document.querySelectorAll('audio[id^="audio_"]').forEach(el=>el.remove());
+  document.querySelectorAll('video[id^="screen_"]').forEach(el=>el.remove());
+  $('#screenDock').classList.add('hidden');
+  $('#voiceState').innerHTML='<p>Keluar dari voice.</p>';
+  updateMuteUI();
+}
+function updateMuteUI(){
+  const btn = $('#muteVoiceBtn');
+  if(!btn) return;
+  btn.textContent = state.voiceMuted ? 'Unmute' : 'Mute';
+  btn.classList.toggle('danger', state.voiceMuted);
+}
+function toggleMute(){
+  state.voiceMuted = !state.voiceMuted;
+  state.localStream?.getAudioTracks().forEach(t => t.enabled = !state.voiceMuted);
+  socket.emit('voice:mute', { muted: state.voiceMuted });
+  updateMuteUI();
+  toast(state.voiceMuted ? 'Mic dimute' : 'Mic aktif');
+}
+function createPeer(socketId, initiator){
+  const pc = new RTCPeerConnection(rtcConfig);
+  state.peers.set(socketId, pc);
+  state.localStream?.getTracks().forEach(t=>pc.addTrack(t,state.localStream));
+  state.screenStream?.getTracks().forEach(t=>pc.addTrack(t,state.screenStream));
+  pc.onicecandidate = e=>{ if(e.candidate) socket.emit('voice:signal',{to:socketId,signal:{candidate:e.candidate}}); };
+  pc.ontrack = e=>{ const [stream]=e.streams; if(e.track.kind==='audio') attachAudio(socketId, stream); if(e.track.kind==='video') attachScreen(socketId, stream); };
+  pc.onnegotiationneeded = async()=>{
+    try{
+      if(!initiator || pc.signalingState !== 'stable') return;
+      const offer=await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('voice:signal',{to:socketId,signal:{sdp:pc.localDescription}});
+    }catch(e){}
+  };
+  return pc;
+}
+function attachAudio(id, stream){
+  const audioId = `audio_${id}_${stream.id}`.replace(/[^a-zA-Z0-9_-]/g,'_');
+  let a=document.getElementById(audioId);
+  if(!a){ a=document.createElement('audio'); a.id=audioId; a.autoplay=true; a.playsInline=true; document.body.appendChild(a); }
+  a.srcObject=stream;
+  a.play?.().catch(()=>{});
+}
+function attachScreen(id, stream){
+  $('#screenDock').classList.remove('hidden');
+  let v=document.getElementById('screen_'+id);
+  if(!v){ v=document.createElement('video'); v.id='screen_'+id; v.autoplay=true; v.playsInline=true; v.controls=true; v.className='screen-video'; $('#remoteScreens').appendChild(v); }
+  v.srcObject=stream;
+  v.play?.().catch(()=>{});
+}
 socket.on('voice:existing-peers', async ({peers})=>{ await getMic().catch(()=>null); peers.forEach(p=>{ if(!state.peers.has(p.socketId)) createPeer(p.socketId,true); }); });
 socket.on('voice:peer-joined', async ({socketId})=>{ await getMic().catch(()=>null); if(!state.peers.has(socketId)) createPeer(socketId,false); });
 socket.on('voice:signal', async ({from, signal})=>{ let pc=state.peers.get(from); if(!pc) pc=createPeer(from,false); if(signal.sdp){ await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp)); if(signal.sdp.type==='offer'){ const ans=await pc.createAnswer(); await pc.setLocalDescription(ans); socket.emit('voice:signal',{to:from,signal:{sdp:pc.localDescription}}); } } else if(signal.candidate){ try{ await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); }catch(e){} } });
-socket.on('voice:peer-left', ({socketId})=>{ state.peers.get(socketId)?.close(); state.peers.delete(socketId); document.getElementById('audio_'+socketId)?.remove(); document.getElementById('screen_'+socketId)?.remove(); });
-socket.on('voice:participants', ({participants})=>{ $('#voiceState').innerHTML=participants.map(p=>`<div class="voice-person"><b>${p.username}${p.username===state.me?.username?' (Kamu)':''}</b>${p.screen?'<span class="tag">Share screen</span>':''}</div>`).join('')||'<p>Belum ada di voice.</p>'; });
-async function startScreenShare(){ try{ if(!state.localStream) await joinVoice(); state.screenStream = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:false }); state.screenStream.getVideoTracks()[0].onended = stopScreenShare; for(const pc of state.peers.values()){ state.screenStream.getTracks().forEach(t=>pc.addTrack(t,state.screenStream)); } socket.emit('screen:start'); toast('Screen share aktif'); }catch(e){ toast('Screen share gagal / tidak didukung','bad'); }}
-function stopScreenShare(){ if(!state.screenStream)return; state.screenStream.getTracks().forEach(t=>t.stop()); state.screenStream=null; socket.emit('screen:stop'); }
+socket.on('voice:peer-left', ({socketId})=>{ state.peers.get(socketId)?.close(); state.peers.delete(socketId); document.querySelectorAll(`[id^="audio_${socketId}_"]`).forEach(el=>el.remove()); document.getElementById('screen_'+socketId)?.remove(); if(!$('#remoteScreens')?.children.length) $('#screenDock').classList.add('hidden'); });
+socket.on('voice:participants', ({participants})=>{
+  $('#voiceState').innerHTML=participants.map(p=>`<div class="voice-person"><b>${p.username}${p.username===state.me?.username?' (Kamu)':''}</b>${p.muted?'<span class="tag muted-tag">Muted</span>':''}${p.screen?'<span class="tag">Share screen</span>':''}</div>`).join('')||'<p>Belum ada di voice.</p>';
+});
+socket.on('screen:stop', ({socketId})=>{
+  document.getElementById('screen_'+socketId)?.remove();
+  if(!$('#remoteScreens')?.children.length) $('#screenDock').classList.add('hidden');
+});
+async function renegotiateAll(){
+  for(const [to, pc] of state.peers.entries()){
+    try{
+      if(pc.signalingState !== 'stable') continue;
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('voice:signal',{to,signal:{sdp:pc.localDescription}});
+    }catch(e){}
+  }
+}
+async function startScreenShare(){
+  try{
+    if(!state.localStream) await joinVoice();
+    state.screenStream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 30 },
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    });
+    const videoTrack = state.screenStream.getVideoTracks()[0];
+    if(videoTrack) videoTrack.onended = stopScreenShare;
+    attachScreen('local', state.screenStream);
+    for(const pc of state.peers.values()){
+      state.screenStream.getTracks().forEach(t=>pc.addTrack(t,state.screenStream));
+    }
+    await renegotiateAll();
+    socket.emit('screen:start');
+    toast(state.screenStream.getAudioTracks().length ? 'Share screen + audio aktif' : 'Screen share aktif. Pilih tab/window dengan opsi audio untuk berbagi suara.');
+  }catch(e){ toast('Screen share gagal / tidak didukung','bad'); }
+}
+function stopScreenShare(){
+  if(!state.screenStream)return;
+  state.screenStream.getTracks().forEach(t=>t.stop());
+  state.screenStream=null;
+  document.getElementById('screen_local')?.remove();
+  if(!$('#remoteScreens')?.children.length) $('#screenDock').classList.add('hidden');
+  socket.emit('screen:stop');
+}
 $('#closeScreenDock').onclick=()=>$('#screenDock').classList.add('hidden');
 
 // Initial restore

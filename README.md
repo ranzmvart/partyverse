@@ -56,3 +56,12 @@ npm start
 ```
 
 Buka `http://localhost:3000`.
+
+## v1.1 Voice + Screen Share Polish
+
+Update kecil:
+- Tambah tombol Mute / Unmute untuk microphone sendiri.
+- Daftar voice menampilkan status muted dan share screen.
+- Screen share tampil menempel di halaman channel, bukan floating window.
+- Screen share meminta izin audio perangkat/tab (`getDisplayMedia` dengan audio). Di Chrome desktop, pilih tab/window lalu centang opsi audio agar suara ikut terkirim.
+- Beberapa browser atau OS mungkin tidak mengizinkan system audio untuk seluruh layar. Cara paling stabil: share tab Chrome dan aktifkan Share tab audio.

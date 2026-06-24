@@ -100,6 +100,10 @@
           </aside>
           <section class="chat panel">
             <div class="panel-head"><h2 id="channelTitle"># general</h2><div class="pill" id="channelType">Text</div></div>
+            <div id="screenDock" class="screen-dock hidden">
+              <div class="panel-head"><h2>Live Screen Share</h2><button id="closeScreenDock" class="icon-btn">×</button></div>
+              <div id="remoteScreens" class="screen-grid"></div>
+            </div>
             <div id="chatMessages" class="messages"></div>
             <form id="chatForm" class="chat-form"><input id="chatInput" placeholder="Tulis pesan..." /><button class="primary">Kirim</button></form>
           </section>
@@ -111,6 +115,7 @@
             <div class="voice-actions">
               <button id="joinVoiceBtn" class="primary">Join Voice</button>
               <button id="leaveVoiceBtn" class="ghost">Leave</button>
+              <button id="muteVoiceBtn" class="ghost">Mute</button>
               <button id="shareScreenBtn" class="ghost">Share Screen</button>
             </div>
           </aside>
@@ -153,7 +158,6 @@
       </div>
     </div>
 
-    <div id="screenDock" class="screen-dock hidden"><div class="panel-head"><h2>Screen Share</h2><button id="closeScreenDock" class="icon-btn">×</button></div><div id="remoteScreens" class="screen-grid"></div></div>
     <div id="toastBox" class="toast-box"></div>
   </div>
 
