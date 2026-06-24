@@ -1,7 +1,7 @@
 {
   "name": "ryuu-connect-discord-like",
-  "version": "1.4.0",
-  "description": "PartyVerse - clean Discord-like community app with simple mobile layout, YouTube watch party, voice, music, and screen share.",
+  "version": "1.5.0",
+  "description": "PartyVerse simple mobile UI and screen share visibility patch",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

@@ -1,23 +1,13 @@
-# PartyVerse v1.4 - Simple Mobile + YouTube Watch Party
+# PartyVerse v1.5 - Simple UI + Mobile Share Patch
 
-Versi ini fokus pada perbaikan UI agar tidak penuh di HP/laptop dan menambahkan fitur nonton video YouTube di ruang voice.
+Patch ini fokus ke UI/UX lebih sederhana dan area share screen yang selalu terlihat di HP/laptop.
 
-## Update utama
+## Perubahan
+- Layout server dibuat lebih simpel dan tidak menumpuk.
+- Area share screen dibuat menempel dan mudah terlihat.
+- Tombol utama disederhanakan: Ruang, Voice, YouTube, Share.
+- Jika browser mendukung `getDisplayMedia`, Share memakai screen share asli.
+- Jika browser HP tidak mendukung screen share asli, aplikasi mencoba fallback kamera HP agar tetap bisa menampilkan sesuatu ke room.
 
-- UI server lebih simple dan tidak menumpuk.
-- Di HP, daftar ruang dibuat menjadi strip kecil horizontal.
-- Tombol penting saja yang tampil saat berada di server: Ruang, Join Voice, YouTube, Share.
-- Fitur Watch YouTube untuk cari video dan menonton di stage.
-- Host/owner server bisa memutar video ke room lewat tombol Room di hasil pencarian Watch YouTube.
-- Share screen tetap tersedia; di HP akan mencoba API browser yang tersedia. Jika browser HP tidak mendukung, akan muncul pesan yang jelas.
-- Chat, voice, friends, music host/self, server, channel/category tetap dipertahankan.
-
-## Deploy Railway
-
-Upload isi folder ini ke GitHub repo, lalu deploy ke Railway. Tambahkan Volume jika ingin data persistent:
-
-```text
-/app/data
-```
-
-Voice dan screen share butuh HTTPS, gunakan domain Railway `.up.railway.app`.
+## Catatan penting
+Screen share asli di web tetap bergantung dukungan browser/OS dan HTTPS. Untuk hasil terbaik pakai Chrome/Edge desktop atau Chrome Android terbaru di domain HTTPS Railway.

@@ -142,7 +142,11 @@ socket.on('community:voice-live', (live) => {
 socket.on('message:new', ({channelId,msg}) => { state.messages[channelId] = state.messages[channelId] || []; state.messages[channelId].push(msg); if (state.currentChannel === channelId) renderMessages(); });
 socket.on('music:room-state', (m) => { state.roomMusic = m; renderMusicState(); if (state.musicMode === 'host') handleHostMusic(m); });
 
-function renderAll() { renderMiniProfile(); renderProfile(); if (state.currentCommunity) renderCommunity(); showApp(); }
+function renderAll() { renderMiniProfile(); renderProfile(); if (state.currentCommunity) renderCommunity(); showApp(); simplifyActionLabels(); }
+function simplifyActionLabels(){
+  const map = { quickJoinVoiceBtn:'Voice', watchYoutubeBtn:'YouTube', quickShareScreenBtn:'Share', joinVoiceBtn:'Voice', shareScreenBtn:'Share', muteVoiceBtn: state.voiceMuted ? 'Unmute' : 'Mute', leaveVoiceBtn:'Leave' };
+  for(const [id,label] of Object.entries(map)){ const el = document.getElementById(id); if(el) el.textContent = label; }
+}
 setTimeout(showApp, 700);
 
 $$('[data-page]').forEach(b => b.addEventListener('click', () => showPage(b.dataset.page)));
@@ -463,7 +467,9 @@ function updateMuteUI(){
   if(!btn) return;
   btn.textContent = state.voiceMuted ? 'Unmute' : 'Mute';
   btn.classList.toggle('danger', state.voiceMuted);
+  const quick = document.getElementById('muteVoiceBtn');
 }
+
 function toggleMute(){
   state.voiceMuted = !state.voiceMuted;
   state.localStream?.getAudioTracks().forEach(t => t.enabled = !state.voiceMuted);
@@ -496,11 +502,23 @@ function attachAudio(id, stream){
   a.play?.().catch(()=>{});
 }
 function attachScreen(id, stream){
-  $('#screenDock').classList.remove('hidden');
+  const dock = $('#screenDock');
+  dock.classList.remove('hidden');
+  dock.classList.add('active-screen');
+  document.body.classList.add('screen-live-mode');
   let v=document.getElementById('screen_'+id);
-  if(!v){ v=document.createElement('video'); v.id='screen_'+id; v.autoplay=true; v.playsInline=true; v.controls=true; v.className='screen-video'; $('#remoteScreens').appendChild(v); }
+  if(!v){
+    v=document.createElement('video');
+    v.id='screen_'+id;
+    v.autoplay=true;
+    v.playsInline=true;
+    v.controls=true;
+    v.className='screen-video';
+    $('#remoteScreens').appendChild(v);
+  }
   v.srcObject=stream;
   v.play?.().catch(()=>{});
+  setTimeout(()=>dock.scrollIntoView({behavior:'smooth', block:'start'}), 120);
 }
 socket.on('voice:existing-peers', async ({peers})=>{
   await getMic().catch(()=>null);
@@ -509,7 +527,7 @@ socket.on('voice:existing-peers', async ({peers})=>{
 });
 socket.on('voice:peer-joined', async ({socketId})=>{ await getMic().catch(()=>null); if(!state.peers.has(socketId)) createPeer(socketId,false); });
 socket.on('voice:signal', async ({from, signal})=>{ let pc=state.peers.get(from); if(!pc) pc=createPeer(from,false); if(signal.sdp){ await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp)); if(signal.sdp.type==='offer'){ const ans=await pc.createAnswer(); await pc.setLocalDescription(ans); socket.emit('voice:signal',{to:from,signal:{sdp:pc.localDescription}}); } } else if(signal.candidate){ try{ await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); }catch(e){} } });
-socket.on('voice:peer-left', ({socketId})=>{ state.peers.get(socketId)?.close(); state.peers.delete(socketId); document.querySelectorAll(`[id^="audio_${socketId}_"]`).forEach(el=>el.remove()); document.getElementById('screen_'+socketId)?.remove(); if(!$('#remoteScreens')?.children.length) $('#screenDock').classList.add('hidden'); });
+socket.on('voice:peer-left', ({socketId})=>{ state.peers.get(socketId)?.close(); state.peers.delete(socketId); document.querySelectorAll(`[id^="audio_${socketId}_"]`).forEach(el=>el.remove()); document.getElementById('screen_'+socketId)?.remove(); if(!$('#remoteScreens')?.children.length){ $('#screenDock').classList.add('hidden'); document.body.classList.remove('screen-live-mode'); } });
 socket.on('voice:participants', ({participants})=>{
   state.inVoice = (participants||[]).some(p=>p.username===state.me?.username);
   $('#voiceState').innerHTML=(participants||[]).map(p=>`<div class="voice-person"><b>${p.username}${p.username===state.me?.username?' (Kamu)':''}</b>${p.muted?'<span class="tag muted-tag">Muted</span>':''}${p.screen?'<span class="tag">Share screen</span>':''}</div>`).join('')||'<p>Belum ada di voice.</p>';
@@ -521,7 +539,7 @@ socket.on('screen:start', ({socketId, username})=>{
 });
 socket.on('screen:stop', ({socketId})=>{
   document.getElementById('screen_'+socketId)?.remove();
-  if(!$('#remoteScreens')?.children.length) $('#screenDock').classList.add('hidden');
+  if(!$('#remoteScreens')?.children.length){ $('#screenDock').classList.add('hidden'); document.body.classList.remove('screen-live-mode'); }
 });
 async function renegotiateAll(){
   for(const [to, pc] of state.peers.entries()){
@@ -533,17 +551,34 @@ async function renegotiateAll(){
     }catch(e){}
   }
 }
+async function getMobileShareFallback(){
+  // Fallback untuk HP/browser yang tidak membuka picker screen-share.
+  // Ini bukan screen capture asli; ini mode kamera agar user HP tetap bisa menampilkan sesuatu ke voice room.
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+    audio: true
+  });
+  stream._partyverseFallback = 'camera';
+  return stream;
+}
+async function captureScreenOrFallback(){
+  const opts = {
+    video: { frameRate: 30, displaySurface: 'browser' },
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false, systemAudio: 'include' }
+  };
+  if(navigator.mediaDevices?.getDisplayMedia){
+    try { return await navigator.mediaDevices.getDisplayMedia(opts); } catch(err){ throw err; }
+  }
+  if(navigator.mediaDevices?.getUserMedia){
+    toast('Share screen asli tidak tersedia di browser HP ini. Mode kamera HP aktif sebagai fallback.', 'bad');
+    return await getMobileShareFallback();
+  }
+  throw new Error('media_not_supported');
+}
 async function startScreenShare(){
   try{
     if(!state.inVoice || !state.localStream){ const joined = await joinVoice(); if(!joined?.ok) return; }
-    if(!navigator.mediaDevices?.getDisplayMedia){
-      toast('Browser HP ini belum mendukung share screen. Coba Chrome Android terbaru atau laptop.', 'bad');
-      return;
-    }
-    state.screenStream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: 30, displaySurface: 'browser' },
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false }
-    });
+    state.screenStream = await captureScreenOrFallback();
     const videoTrack = state.screenStream.getVideoTracks()[0];
     if(videoTrack) videoTrack.onended = stopScreenShare;
     attachScreen('local', state.screenStream);
@@ -552,18 +587,18 @@ async function startScreenShare(){
     }
     await renegotiateAll();
     socket.emit('screen:start');
-    toast(state.screenStream.getAudioTracks().length ? 'Share screen + audio aktif' : 'Screen share aktif. Pilih tab/window dengan opsi audio untuk berbagi suara.');
-  }catch(e){ toast('Screen share gagal. Di HP, coba Chrome Android terbaru dan pastikan HTTPS aktif.','bad'); }
+    toast(state.screenStream._partyverseFallback ? 'Mode share kamera HP aktif' : (state.screenStream.getAudioTracks().length ? 'Share screen + audio aktif' : 'Screen share aktif. Pilih tab/window dengan opsi audio untuk berbagi suara.'));
+  }catch(e){ toast('Share gagal. Browser HP kadang memblokir screen share; coba Chrome Android HTTPS atau gunakan laptop.','bad'); }
 }
 function stopScreenShare(){
   if(!state.screenStream)return;
   state.screenStream.getTracks().forEach(t=>t.stop());
   state.screenStream=null;
   document.getElementById('screen_local')?.remove();
-  if(!$('#remoteScreens')?.children.length) $('#screenDock').classList.add('hidden');
+  if(!$('#remoteScreens')?.children.length){ $('#screenDock').classList.add('hidden'); document.body.classList.remove('screen-live-mode'); }
   socket.emit('screen:stop');
 }
-$('#closeScreenDock').onclick=()=>$('#screenDock').classList.add('hidden');
+$('#closeScreenDock').onclick=()=>{ $('#screenDock').classList.add('hidden'); document.body.classList.remove('screen-live-mode'); };
 
 // Initial restore
 if(state.token){ socket.emit('auth:restore',{token:state.token},(r)=>{ if(r?.ok){ state.me=r.me; loadShop(); loadServers(); renderAll(); } else showApp(); }); } else showApp();
