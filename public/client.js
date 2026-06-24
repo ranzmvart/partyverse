@@ -2,6 +2,19 @@ const $ = (q) => document.querySelector(q);
 const $$ = (q) => [...document.querySelectorAll(q)];
 const socket = io({ reconnection: true, reconnectionAttempts: Infinity, timeout: 12000 });
 
+
+// PartyVerse v2.1: dedicated device layout controller
+function applyDeviceLayout(){
+  const mobile = window.matchMedia('(max-width: 760px), (hover: none) and (pointer: coarse)').matches;
+  document.body.classList.toggle('device-mobile', mobile);
+  document.body.classList.toggle('device-desktop', !mobile);
+  document.documentElement.dataset.device = mobile ? 'mobile' : 'desktop';
+}
+applyDeviceLayout();
+window.addEventListener('resize', applyDeviceLayout, { passive: true });
+window.addEventListener('orientationchange', () => setTimeout(applyDeviceLayout, 180), { passive: true });
+
+
 const state = {
   token: localStorage.getItem('ryuu_connect_token') || '',
   me: null,

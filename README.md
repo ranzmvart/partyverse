@@ -15,3 +15,12 @@ Gunakan Volume untuk data permanen:
 ## Catatan
 
 UI dibuat Discord-inspired dengan nama/warna/branding PartyVerse sendiri dan tanpa aset/logo Discord.
+
+
+## v2.1 Device Layout Final
+
+Versi ini memisahkan layout desktop dan mobile melalui kelas `device-desktop` dan `device-mobile`.
+
+- Desktop/laptop: sidebar server, channel list, chat/stage, dan panel member dibuat dalam grid khusus laptop.
+- Mobile/HP: channel list menjadi drawer, ruang menjadi chip horizontal, tombol utama hanya Ruang/Voice/YouTube/Share, stage share screen diprioritaskan agar tidak ketutupan.
+- Fitur inti tetap dipertahankan: login, server, text/voice channel, YouTube, music, voice, share screen, friends, dan persistent data.
