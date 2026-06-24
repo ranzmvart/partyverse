@@ -110,10 +110,14 @@
                 <span id="channelType" class="channel-subtitle">Text Channel</span>
               </div>
               <div class="channel-actions-inline">
+                <button id="mobileChannelsToggle" class="soft-btn sm mobile-only">Ruang</button>
                 <button id="quickJoinVoiceBtn" class="primary sm">Join Voice</button>
-                <button id="quickShareScreenBtn" class="primary alt sm">Share Screen</button>
+                <button id="watchYoutubeBtn" class="primary alt sm">YouTube</button>
+                <button id="quickShareScreenBtn" class="ghost sm">Share</button>
               </div>
             </div>
+
+            <div id="mobileChannelStrip" class="mobile-channel-strip"></div>
 
             <div id="activeScreenNotice" class="live-banner hidden">
               <div><b>Live screen sedang berlangsung</b><span id="liveScreenNames">Klik join voice untuk menonton.</span></div>
@@ -121,13 +125,22 @@
             </div>
 
             <div id="screenDock" class="screen-dock hidden">
-              <div class="screen-head"><div><b>Live Stage</b><span>Screen share / watch party</span></div><button id="closeScreenDock" class="icon-btn">×</button></div>
+              <div class="screen-head"><div><b>Live Screen</b><span>Screen share</span></div><button id="closeScreenDock" class="icon-btn">×</button></div>
               <div id="remoteScreens" class="screen-grid"></div>
+            </div>
+
+            <div id="watchDock" class="watch-dock hidden">
+              <div class="screen-head"><div><b>Watch YouTube</b><span id="watchTitle">Cari atau tonton video bersama.</span></div><button id="closeWatchDock" class="icon-btn">×</button></div>
+              <div class="watch-body">
+                <div class="watch-search-row"><input id="watchSearch" placeholder="Cari video YouTube..." /><button id="watchSearchBtn" class="primary sm">Cari</button></div>
+                <div id="watchResults" class="watch-results"></div>
+                <div id="watchFrame" class="watch-frame"><div class="watch-empty">Pilih video untuk mulai nonton.</div></div>
+              </div>
             </div>
 
             <div id="voiceStagePanel" class="voice-stage-card hidden">
               <div class="stage-copy"><b>Voice Stage</b><span>Masuk voice untuk ngobrol, streaming lagu, nonton YouTube, atau share screen.</span></div>
-              <div class="stage-actions"><button id="stageMusicBtn" class="soft-btn">Buka Musik</button><button id="stageScreenBtn" class="primary sm">Share Screen</button></div>
+              <div class="stage-actions"><button id="stageMusicBtn" class="soft-btn">Musik</button><button id="watchYoutubeStageBtn" class="primary alt sm">Nonton YouTube</button><button id="stageScreenBtn" class="ghost sm">Share Screen</button></div>
             </div>
 
             <div id="chatMessages" class="messages"></div>

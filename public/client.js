@@ -25,7 +25,9 @@ const state = {
   activeTrackTitle: '',
   roomMusic: null,
   voiceLive: null,
-  inVoice: false
+  inVoice: false,
+  watchModeHost: false,
+  activeWatchId: ''
 };
 
 function toast(text, type='good') {
@@ -289,9 +291,10 @@ function renderCommunity() {
   }).join('');
   $('#openCreateCategoryBtn').style.display = canManage ? '' : 'none';
   $('#openCreateChannelBtn').style.display = canManage ? '' : 'none';
-  $$('[data-channel]').forEach(b=>b.onclick=()=>{state.currentChannel=b.dataset.channel; renderCommunity(); renderMessages();});
-  $$('[data-voice]').forEach(b=>b.onclick=()=>{state.voiceChannel=b.dataset.voice; joinVoice(); renderCommunity();});
+  $$('[data-channel]').forEach(b=>b.onclick=()=>{state.currentChannel=b.dataset.channel; $('.server-sidebar')?.classList.remove('mobile-open'); renderCommunity(); renderMessages();});
+  $$('[data-voice]').forEach(b=>b.onclick=()=>{state.voiceChannel=b.dataset.voice; $('.server-sidebar')?.classList.remove('mobile-open'); joinVoice(); renderCommunity();});
   $$('[data-new-channel]').forEach(b=>b.onclick=(e)=>{e.stopPropagation(); openCreateChannel(b.dataset.newChannel);});
+  renderMobileChannelStrip();
   renderLiveScreenNotice();
   const ch = c.channels.find(x=>x.id===state.currentChannel) || c.channels.find(x=>x.type==='text');
   const vch = c.channels.find(x=>x.id===state.voiceChannel);
@@ -302,6 +305,27 @@ function renderCommunity() {
   $('#memberList').innerHTML = c.members.map(u=>`<div class="item"><div class="avatar small">${u[0].toUpperCase()}</div><div class="item-main"><b>${escapeHtml(u)}</b><span>${u===c.owner?'Owner':'Member'}</span></div></div>`).join('');
   renderMessages();
 }
+
+function renderMobileChannelStrip(){
+  const strip = $('#mobileChannelStrip');
+  const c = state.currentCommunity;
+  if(!strip || !c) return;
+  const textChannels = c.channels.filter(ch=>ch.type==='text');
+  const voiceChannels = c.channels.filter(ch=>ch.type==='voice');
+  const chips = [];
+  for(const ch of textChannels){
+    chips.push(`<button class="mobile-chip ${state.currentChannel===ch.id?'active':''}" data-mobile-channel="${ch.id}"># ${escapeHtml(ch.name)}</button>`);
+  }
+  for(const ch of voiceChannels){
+    const live = (state.voiceLive?.channels||[]).find(v=>v.channelId===ch.id);
+    const suffix = live?.screenShares?.length ? ' • Live' : (live?.participants?.length ? ` • ${live.participants.length}` : '');
+    chips.push(`<button class="mobile-chip ${state.voiceChannel===ch.id?'active':''}" data-mobile-voice="${ch.id}">◖ ${escapeHtml(ch.name)}${suffix}</button>`);
+  }
+  strip.innerHTML = chips.join('');
+  $$('[data-mobile-channel]').forEach(b=>b.onclick=()=>{ state.currentChannel=b.dataset.mobileChannel; renderCommunity(); renderMessages(); });
+  $$('[data-mobile-voice]').forEach(b=>b.onclick=()=>{ state.voiceChannel=b.dataset.mobileVoice; joinVoice(); renderCommunity(); });
+}
+
 function renderMessages() {
   const box = $('#chatMessages'); const list = state.messages[state.currentChannel] || [];
   box.innerHTML = list.map(m=>`<div class="msg"><div class="avatar small">${m.user[0].toUpperCase()}</div><div><b>${m.user}</b> <span class="time">${fmtTime(m.createdAt)}</span><div>${m.text}</div></div></div>`).join('') || '<p class="hint">Belum ada pesan.</p>';
@@ -314,7 +338,10 @@ $('#openCreateCategoryBtn').onclick = () => openCreateCategory('text');
 $('#openCreateChannelBtn').onclick = () => openCreateChannel();
 $('#quickJoinVoiceBtn').onclick = joinVoice;
 $('#quickShareScreenBtn').onclick = startScreenShare;
+$('#mobileChannelsToggle').onclick = () => $('.server-sidebar')?.classList.toggle('mobile-open');
+$('#watchYoutubeBtn').onclick = openWatchDock;
 $('#stageMusicBtn').onclick = () => $('#musicWidget').classList.add('open');
+$('#watchYoutubeStageBtn').onclick = openWatchDock;
 $('#stageScreenBtn').onclick = startScreenShare;
 
 // Friends
@@ -341,9 +368,47 @@ $('#musicSearchBtn').onclick = () => { const query=$('#musicSearch').value; sock
 function renderMusicResults(videos){ $('#musicResults').innerHTML=videos.map(v=>`<div class="music-item"><img src="${v.thumbnail||''}" onerror="this.style.display='none'"><div class="item-main"><b>${v.title}</b><span>${v.author} • ${v.duration}</span></div><button class="ghost sm" data-play-self="${v.videoId}" data-title="${escapeHtml(v.title)}">Play</button>${state.currentCommunity?`<button class="primary sm" data-play-room="${v.videoId}" data-title="${escapeHtml(v.title)}">Room</button>`:''}</div>`).join(''); $$('[data-play-self]').forEach(b=>b.onclick=()=>{setMusicMode('self'); playVideo(b.dataset.playSelf,b.dataset.title,0);}); $$('[data-play-room]').forEach(b=>b.onclick=()=>{ if(!state.currentCommunity)return; socket.emit('music:room-play',{communityId:state.currentCommunity.id,videoId:b.dataset.playRoom,title:b.dataset.title},(r)=>{ if(!r.ok)return toast(r.error,'bad'); setMusicMode('host'); toast('Musik room diputar'); }); }); }
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function renderMusicState(){ $('#musicHint').textContent = state.currentCommunity ? (state.musicMode==='host'?'Mode: dengar host / voice stage. Volume tetap milik kamu sendiri.':'Mode: streaming sendiri, tidak ikut musik host.') : 'Belum masuk server: semua user bebas play sendiri.'; if(state.roomMusic) $('#currentTrack').textContent = state.roomMusic.title || 'Room music'; }
-function handleHostMusic(m){ renderMusicState(); if(!m){ stopMusic(); return;} if(state.musicMode!=='host') return; if(m.paused){ if(state.activeVideoId!==m.videoId) playVideo(m.videoId,m.title,m.position||0); setTimeout(pauseMusic,300); } else { const currentTime = state.ytPlayer?.getCurrentTime ? state.ytPlayer.getCurrentTime() : 0; const drift = Math.abs((currentTime||0) - (m.position||0)); if(state.activeVideoId !== m.videoId || drift > 4) playVideo(m.videoId,m.title,m.position||0); }}
+function handleHostMusic(m){ renderMusicState(); if(!m){ stopMusic(); return;} if(state.musicMode!=='host') return; const watchOpen = !$('#watchDock')?.classList.contains('hidden') && state.watchModeHost; if(watchOpen && state.activeWatchId !== m.videoId){ setWatchFrame(m.videoId,m.title,m.position||0,true); } if(m.paused){ if(state.activeVideoId!==m.videoId) playVideo(m.videoId,m.title,m.position||0); setTimeout(pauseMusic,300); } else { const currentTime = state.ytPlayer?.getCurrentTime ? state.ytPlayer.getCurrentTime() : 0; const drift = Math.abs((currentTime||0) - (m.position||0)); if(state.activeVideoId !== m.videoId || drift > 4) playVideo(m.videoId,m.title,m.position||0); }}
 $('#roomPauseBtn').onclick=()=> state.currentCommunity && socket.emit('music:room-pause',{communityId:state.currentCommunity.id},(r)=>toast(r.ok?'Room paused':r.error,r.ok?'good':'bad'));
 $('#roomStopBtn').onclick=()=> state.currentCommunity && socket.emit('music:room-stop',{communityId:state.currentCommunity.id},(r)=>toast(r.ok?'Room stopped':r.error,r.ok?'good':'bad'));
+
+
+// YouTube watch party / video stage
+function openWatchDock(){
+  $('#watchDock')?.classList.remove('hidden');
+  $('#screenDock')?.classList.add('hidden');
+  if(state.roomMusic && state.musicMode === 'host' && state.roomMusic.videoId){
+    setWatchFrame(state.roomMusic.videoId, state.roomMusic.title || 'Room video', state.roomMusic.position || 0, true);
+  }
+}
+$('#closeWatchDock').onclick = ()=> $('#watchDock').classList.add('hidden');
+$('#watchSearchBtn').onclick = () => {
+  const query = $('#watchSearch').value || $('#musicSearch').value;
+  socket.emit('music:search',{query},(r)=>{
+    if(!r?.ok) return toast(r?.error || 'Gagal cari video','bad');
+    renderWatchResults(r.videos || []);
+  });
+};
+function renderWatchResults(videos){
+  $('#watchResults').innerHTML = videos.map(v=>`<div class="watch-item"><img src="${v.thumbnail||''}" onerror="this.style.display='none'"><div><b>${escapeHtml(v.title)}</b><span>${escapeHtml(v.author)} • ${escapeHtml(v.duration)}</span></div><button class="ghost sm" data-watch-self="${v.videoId}" data-title="${escapeHtml(v.title)}">Play</button>${state.currentCommunity?`<button class="primary sm" data-watch-room="${v.videoId}" data-title="${escapeHtml(v.title)}">Room</button>`:''}</div>`).join('') || '<p class="hint">Tidak ada hasil.</p>';
+  $$('[data-watch-self]').forEach(b=>b.onclick=()=>{ state.watchModeHost=false; setMusicMode('self'); setWatchFrame(b.dataset.watchSelf,b.dataset.title,0,false); });
+  $$('[data-watch-room]').forEach(b=>b.onclick=()=>{
+    if(!state.currentCommunity) return;
+    socket.emit('music:room-play',{communityId:state.currentCommunity.id,videoId:b.dataset.watchRoom,title:b.dataset.title},(r)=>{
+      if(!r?.ok) return toast(r?.error || 'Gagal play ke room','bad');
+      setMusicMode('host'); state.watchModeHost=true; setWatchFrame(b.dataset.watchRoom,b.dataset.title,0,true); toast('Video room diputar');
+    });
+  });
+}
+function setWatchFrame(videoId,title='',seconds=0,host=false){
+  state.activeWatchId = videoId;
+  state.watchModeHost = !!host;
+  $('#watchDock').classList.remove('hidden');
+  $('#watchTitle').textContent = title || (host ? 'Room video' : 'YouTube video');
+  const start = Math.max(0, Number(seconds)||0);
+  const src = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?autoplay=1&playsinline=1&rel=0&modestbranding=1&start=${Math.floor(start)}`;
+  $('#watchFrame').innerHTML = `<iframe allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen src="${src}"></iframe>`;
+}
 
 // Voice + screen share
 const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] };
@@ -472,7 +537,7 @@ async function startScreenShare(){
   try{
     if(!state.inVoice || !state.localStream){ const joined = await joinVoice(); if(!joined?.ok) return; }
     if(!navigator.mediaDevices?.getDisplayMedia){
-      toast('Screen share belum didukung browser ini. Coba Chrome Android/desktop.', 'bad');
+      toast('Browser HP ini belum mendukung share screen. Coba Chrome Android terbaru atau laptop.', 'bad');
       return;
     }
     state.screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -488,7 +553,7 @@ async function startScreenShare(){
     await renegotiateAll();
     socket.emit('screen:start');
     toast(state.screenStream.getAudioTracks().length ? 'Share screen + audio aktif' : 'Screen share aktif. Pilih tab/window dengan opsi audio untuk berbagi suara.');
-  }catch(e){ toast('Screen share gagal / tidak didukung','bad'); }
+  }catch(e){ toast('Screen share gagal. Di HP, coba Chrome Android terbaru dan pastikan HTTPS aktif.','bad'); }
 }
 function stopScreenShare(){
   if(!state.screenStream)return;

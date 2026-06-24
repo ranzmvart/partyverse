@@ -1,30 +1,23 @@
-# PartyVerse / Ryuu Connect v1.3
+# PartyVerse v1.4 - Simple Mobile + YouTube Watch Party
 
-Discord-inspired community app with original PartyVerse visual style.
+Versi ini fokus pada perbaikan UI agar tidak penuh di HP/laptop dan menambahkan fitur nonton video YouTube di ruang voice.
 
-## New in v1.3
+## Update utama
 
-- Cleaner Discord-like layout, but with different PartyVerse branding.
-- Real server categories.
-- Create text category / voice category.
-- Create new text rooms and voice rooms inside categories.
-- Voice rooms support one-click voice join.
-- Share screen button joins voice automatically if needed.
-- Live screen share docks into the channel page.
-- Watch party/music player can be opened from voice stage.
-- Removed visible shop/crate/inventory/leaderboard pages from UI.
-- Better mobile layout for chat, voice, screen share, and channel list.
+- UI server lebih simple dan tidak menumpuk.
+- Di HP, daftar ruang dibuat menjadi strip kecil horizontal.
+- Tombol penting saja yang tampil saat berada di server: Ruang, Join Voice, YouTube, Share.
+- Fitur Watch YouTube untuk cari video dan menonton di stage.
+- Host/owner server bisa memutar video ke room lewat tombol Room di hasil pencarian Watch YouTube.
+- Share screen tetap tersedia; di HP akan mencoba API browser yang tersedia. Jika browser HP tidak mendukung, akan muncul pesan yang jelas.
+- Chat, voice, friends, music host/self, server, channel/category tetap dipertahankan.
 
-## Important note about mobile screen share
+## Deploy Railway
 
-The code supports screen share on mobile when the browser supports `getDisplayMedia`. Android Chrome usually has the best chance. Some iPhone/iOS browsers may block screen sharing because of browser limitations.
+Upload isi folder ini ke GitHub repo, lalu deploy ke Railway. Tambahkan Volume jika ingin data persistent:
 
-## Deploy
-
-Upload the contents of this folder to GitHub, then deploy to Railway.
-
-Recommended Railway Volume mount path:
-
-```txt
+```text
 /app/data
 ```
+
+Voice dan screen share butuh HTTPS, gunakan domain Railway `.up.railway.app`.
