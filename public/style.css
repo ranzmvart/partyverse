@@ -178,3 +178,244 @@ body.in-community .toast{background:#232428;border-color:#45474e;color:var(--dv-
 @media(max-width:760px){
   body.in-community .app{display:block;background:var(--dv-app2);}body.in-community .rail{display:none!important;}body.in-community .main{height:100vh;overflow:hidden;}body.in-community .discord-shell{display:block;height:100vh;padding:0;background:var(--dv-app2);}body.in-community .conversation{height:100vh;border-radius:0;}body.in-community .server-sidebar{position:fixed;left:0;top:0;bottom:0;width:min(84vw,310px);right:auto;z-index:150;transform:translateX(-105%);display:flex!important;border-radius:0;transition:.18s ease;box-shadow:12px 0 40px rgba(0,0,0,.45);}body.in-community .server-sidebar.mobile-open{transform:translateX(0);}body.in-community .channel-top{height:auto;min-height:54px;padding:8px 10px;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;}body.in-community .channel-top h2{font-size:16px;max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}body.in-community .channel-actions-inline{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%;}body.in-community .channel-actions-inline button{min-width:0;padding:9px 4px;font-size:11px;border-radius:8px;}body.in-community .mobile-channel-strip{display:flex!important;height:42px;padding:6px 8px;background:#2b2d31;border-bottom:1px solid rgba(0,0,0,.22);}body.in-community .mobile-chip{background:#35373c;border:0;color:var(--dv-muted);}body.in-community .mobile-chip.active{background:#5865f2;color:#fff;}body.in-community .screen-dock,body.in-community .watch-dock{margin:8px 8px 0!important;border-radius:10px;max-height:42vh!important;}body.in-community .screen-grid{padding:8px;}body.in-community .screen-grid video{max-height:31vh!important;min-height:150px;}body.in-community .watch-frame{max-height:26vh;}body.in-community .watch-results{max-height:92px!important;}body.in-community .live-banner{margin:8px 8px 0;border-radius:10px;padding:9px;}body.in-community .messages{padding:10px 10px 74px;}body.in-community .msg{grid-template-columns:34px minmax(0,1fr);gap:8px;padding:7px 0;}body.in-community .msg .avatar,body.in-community .msg .avatar.small{width:34px;height:34px;}body.in-community .chat-form{position:fixed;left:8px;right:8px;bottom:8px;grid-template-columns:minmax(0,1fr)64px;border-radius:12px;z-index:70;}body.in-community .chat-form input{height:42px;font-size:16px;}body.in-community .chat-form button{height:34px;margin:4px;font-size:12px;}body.in-community .voice-actions{left:8px;right:8px;bottom:58px;transform:none;display:grid;grid-template-columns:repeat(4,1fr);border-radius:14px;padding:6px;}body.in-community .voice-actions button{min-width:0;padding:9px 6px;font-size:11px;}body.in-community .music-widget{right:10px;bottom:10px;}body.in-community .music-fab{width:50px;height:50px;}body.in-community .music-panel{width:calc(100vw - 16px);max-height:76vh;}body.in-community .right-sidebar{display:none!important;}
 }
+
+/* === PATCH v2.1: Full Discord Feel - Boot, Auth, Rail, Messages === */
+
+/* --- Boot screen: Discord dark flat --- */
+.boot {
+  background: #1e1f22 !important;
+}
+.boot-card h1 {
+  color: #f2f3f5;
+}
+.boot-card p {
+  color: #b5bac1;
+}
+.loader {
+  background: #313338 !important;
+}
+.loader:before {
+  background: #5865f2 !important;
+}
+
+/* --- Logo orb: Discord blurple solid --- */
+.logo-orb {
+  background: #5865f2 !important;
+  box-shadow: 0 8px 24px rgba(88,101,242,.35) !important;
+  border-radius: 16px !important;
+}
+
+/* --- App background & rail (outside community) --- */
+body:not(.in-community) {
+  background: #1e1f22 !important;
+}
+body:not(.in-community) .app {
+  background: #1e1f22 !important;
+}
+body:not(.in-community) .rail {
+  background: #1e1f22 !important;
+  border-right: 1px solid rgba(0,0,0,.3) !important;
+  backdrop-filter: none !important;
+}
+body:not(.in-community) .brand b {
+  color: #f2f3f5;
+}
+body:not(.in-community) .me-card {
+  background: #232428 !important;
+  border-color: #3f4147 !important;
+  border-radius: 10px !important;
+}
+body:not(.in-community) .nav-btn {
+  background: transparent !important;
+  border: 0 !important;
+  color: #b5bac1 !important;
+  border-radius: 4px !important;
+  font-weight: 600;
+  padding: 10px 14px;
+  transition: .14s ease;
+}
+body:not(.in-community) .nav-btn:hover {
+  background: #35373c !important;
+  color: #f2f3f5 !important;
+}
+body:not(.in-community) .nav-btn.active {
+  background: #404249 !important;
+  color: #fff !important;
+}
+body:not(.in-community) #logoutBtn {
+  background: transparent !important;
+  border: 1px solid #3f4147 !important;
+  color: #b5bac1 !important;
+  border-radius: 4px !important;
+}
+body:not(.in-community) #logoutBtn:hover {
+  background: #ed4245 !important;
+  border-color: #ed4245 !important;
+  color: #fff !important;
+}
+
+/* --- Main area background --- */
+body:not(.in-community) .main {
+  background: #313338 !important;
+}
+
+/* --- Topbar --- */
+body:not(.in-community) .topbar {
+  background: #313338 !important;
+  backdrop-filter: none !important;
+  border-bottom: 1px solid rgba(0,0,0,.24) !important;
+}
+#topTitle { color: #f2f3f5; font-size: 16px; }
+#topSubtitle { font-size: 12px; color: #b5bac1; }
+.status-dot {
+  background: #232428 !important;
+  border-color: #3f4147 !important;
+  border-radius: 8px !important;
+}
+
+/* --- Auth & Hero cards --- */
+body:not(.in-community) .hero-card,
+body:not(.in-community) .panel {
+  background: #2b2d31 !important;
+  border-color: #3f4147 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.28) !important;
+  border-radius: 12px !important;
+}
+body:not(.in-community) .hero-card h1 {
+  color: #f2f3f5 !important;
+  font-size: clamp(28px,4vw,52px) !important;
+}
+body:not(.in-community) .hero-card p {
+  color: #b5bac1 !important;
+}
+.eyebrow {
+  color: #5865f2 !important;
+  font-size: 12px !important;
+  letter-spacing: .08em !important;
+  font-weight: 700;
+}
+
+/* Auth inputs */
+body:not(.in-community) input,
+body:not(.in-community) textarea {
+  background: #1e1f22 !important;
+  border-color: #3f4147 !important;
+  border-radius: 4px !important;
+  color: #f2f3f5 !important;
+}
+body:not(.in-community) input:focus,
+body:not(.in-community) textarea:focus {
+  border-color: #5865f2 !important;
+  box-shadow: 0 0 0 2px rgba(88,101,242,.3) !important;
+}
+
+/* Auth tabs */
+body:not(.in-community) .tabs {
+  background: #1e1f22 !important;
+  border-color: #3f4147 !important;
+  border-radius: 6px !important;
+  padding: 4px;
+}
+body:not(.in-community) .tab {
+  background: transparent !important;
+  border: 0 !important;
+  color: #b5bac1 !important;
+  border-radius: 4px !important;
+  font-weight: 600;
+}
+body:not(.in-community) .tab.active {
+  background: #313338 !important;
+  color: #fff !important;
+}
+
+/* Primary button */
+body:not(.in-community) .primary {
+  background: #5865f2 !important;
+  border-radius: 4px !important;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+body:not(.in-community) .primary:hover {
+  background: #4752c4 !important;
+}
+body:not(.in-community) .ghost {
+  background: #4e5058 !important;
+  border: 0 !important;
+  color: #f2f3f5 !important;
+  border-radius: 4px !important;
+}
+body:not(.in-community) .ghost:hover {
+  background: #6d6f78 !important;
+}
+
+/* Stat cards */
+body:not(.in-community) .stat-card {
+  background: #232428 !important;
+  border-color: #3f4147 !important;
+  border-radius: 10px !important;
+}
+body:not(.in-community) .stat-card b {
+  color: #f2f3f5;
+  font-size: 16px;
+}
+body:not(.in-community) .stat-card span {
+  color: #b5bac1;
+}
+
+/* Server list items */
+body:not(.in-community) .item {
+  background: #232428 !important;
+  border-color: #3f4147 !important;
+  border-radius: 8px !important;
+}
+body:not(.in-community) .item:hover {
+  background: #2b2d31 !important;
+}
+body:not(.in-community) .avatar {
+  border-radius: 50% !important;
+  border: 0 !important;
+  background: linear-gradient(135deg,#5865f2,#4752c4) !important;
+}
+
+/* --- Messages (tighter, more Discord) --- */
+body:not(.in-community) .msg {
+  border-radius: 4px !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 4px 8px !important;
+}
+body:not(.in-community) .msg:hover {
+  background: rgba(255,255,255,.03) !important;
+}
+
+/* Toast */
+.toast {
+  background: #111214 !important;
+  border-color: #3f4147 !important;
+  border-radius: 10px !important;
+  color: #f2f3f5 !important;
+}
+
+/* Music widget */
+.music-fab {
+  background: #5865f2 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 28px rgba(88,101,242,.4) !important;
+}
+.music-panel {
+  background: #232428 !important;
+  border-color: #3f4147 !important;
+  border-radius: 14px !important;
+}
+
+/* Modal */
+.modal-card {
+  background: #313338 !important;
+  border-color: #3f4147 !important;
+  border-radius: 10px !important;
+}
+
+/* Line separator */
+.line {
+  background: #3f4147 !important;
+}

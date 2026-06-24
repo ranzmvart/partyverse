@@ -1,0 +1,85 @@
+{
+  "users": {
+    "ryuu": {
+      "username": "ryuu",
+      "pin": "291206",
+      "owner": true,
+      "points": 999999999,
+      "avatar": "",
+      "bio": "",
+      "inventory": {
+        "frame_neon": 1,
+        "frame_void": 1,
+        "frame_royal": 1,
+        "badge_founder": 1,
+        "badge_voice": 1,
+        "theme_midnight": 1,
+        "theme_cyber": 1,
+        "crate_moon": 1,
+        "crate_legend": 1
+      },
+      "equipped": {
+        "frame": "",
+        "badge": "",
+        "theme": ""
+      },
+      "stats": {
+        "messages": 0,
+        "callsJoined": 0,
+        "streamsStarted": 0,
+        "screenShares": 0,
+        "cratesOpened": 0,
+        "communities": 0
+      },
+      "friends": [],
+      "friendRequests": [],
+      "tokens": [],
+      "createdAt": 1782295584555
+    }
+  },
+  "communities": {
+    "comm_hub": {
+      "id": "comm_hub",
+      "name": "Ryuu Hub",
+      "owner": "ryuu",
+      "code": "RYUUHUB",
+      "createdAt": 1782295584555,
+      "members": [
+        "ryuu"
+      ],
+      "categories": [
+        {
+          "id": "cat_text_hub",
+          "name": "Text Channels",
+          "type": "text",
+          "order": 1
+        },
+        {
+          "id": "cat_voice_hub",
+          "name": "Voice Channels",
+          "type": "voice",
+          "order": 2
+        }
+      ],
+      "channels": [
+        {
+          "id": "chan_general",
+          "name": "general",
+          "type": "text",
+          "categoryId": "cat_text_hub"
+        },
+        {
+          "id": "chan_voice",
+          "name": "voice-lounge",
+          "type": "voice",
+          "categoryId": "cat_voice_hub"
+        }
+      ],
+      "music": null
+    }
+  },
+  "messages": {
+    "chan_general": []
+  },
+  "invites": []
+}
