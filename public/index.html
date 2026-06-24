@@ -4,22 +4,22 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
   <meta name="theme-color" content="#090d18" />
-  <title>Ryuu Connect</title>
+  <title>PartyVerse</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div id="boot" class="boot">
     <div class="boot-card">
       <div class="logo-orb">R</div>
-      <h1>Ryuu Connect</h1>
-      <p>Community voice, chat, music, screen share.</p>
+      <h1>PartyVerse</h1>
+      <p>Chat, voice, music, watch party, and screen share.</p>
       <div class="loader"></div>
     </div>
   </div>
 
   <div id="app" class="app hidden">
     <aside class="rail" id="rail">
-      <div class="brand"><div class="logo-orb mini">R</div><div><b>Ryuu Connect</b><span>Community Arena</span></div></div>
+      <div class="brand"><div class="logo-orb mini">P</div><div><b>PartyVerse</b><span>Community Space</span></div></div>
       <div class="me-card" id="miniProfile"></div>
       <nav class="nav">
         <button data-page="home" class="nav-btn active">Home</button>
@@ -33,15 +33,15 @@
     <main class="main">
       <header class="topbar">
         <button id="mobileMenu" class="icon-btn">☰</button>
-        <div><b id="topTitle">Home</b><span id="topSubtitle">Ryuu Connect</span></div>
+        <div><b id="topTitle">Home</b><span id="topSubtitle">PartyVerse</span></div>
         <div class="status-dot" id="netStatus">Connecting</div>
       </header>
 
       <section id="authPage" class="page auth-page">
         <div class="hero-card auth-card">
-          <div class="logo-orb">R</div>
-          <h1>Ryuu Connect</h1>
-          <p>Community app buatan kamu: chat realtime, voice satu klik, share screen, musik bersama, dan friends.</p>
+          <div class="logo-orb">P</div>
+          <h1>PartyVerse</h1>
+          <p>Ruang komunitas modern: chat, voice satu klik, screen share, watch party, musik bersama, dan friends.</p>
           <div class="tabs"><button class="tab active" data-auth="login">Login</button><button class="tab" data-auth="register">Daftar</button></div>
           <input id="authUsername" placeholder="username" autocomplete="username" />
           <input id="authPin" placeholder="PIN" autocomplete="current-password" type="password" />
@@ -85,34 +85,61 @@
         </div>
       </section>
 
-      <section id="communityPage" class="page hidden community-page">
-        <div class="server-layout">
-          <aside class="channels panel">
-            <div class="panel-head"><h2 id="communityName">Server</h2><button id="copyCodeBtn" class="ghost sm">Copy Code</button></div>
-            <div class="tag" id="communityCode">------</div>
-            <h3>Text</h3><div id="textChannels" class="channel-list"></div>
-            <h3>Voice</h3><div id="voiceChannels" class="channel-list"></div>
-            <button id="leaveCommunityView" class="ghost full">Kembali</button>
+      <section id="communityPage" class="page hidden community-page discord-view">
+        <div class="discord-shell">
+          <aside class="server-sidebar panel">
+            <div class="server-card-head">
+              <div>
+                <h2 id="communityName">Server</h2>
+                <span id="communityCode" class="server-code">------</span>
+              </div>
+              <button id="copyCodeBtn" class="icon-btn" title="Copy invite code">⧉</button>
+            </div>
+            <div class="channel-toolbar">
+              <button id="openCreateCategoryBtn" class="soft-btn">＋ Kategori</button>
+              <button id="openCreateChannelBtn" class="soft-btn">＋ Ruang</button>
+            </div>
+            <div id="categoryList" class="category-list"></div>
+            <button id="leaveCommunityView" class="soft-btn full back-btn">← Server List</button>
           </aside>
-          <section class="chat panel">
-            <div class="panel-head"><h2 id="channelTitle"># general</h2><div class="pill" id="channelType">Text</div></div>
+
+          <section class="conversation panel">
+            <div class="channel-top">
+              <div>
+                <h2 id="channelTitle"># general</h2>
+                <span id="channelType" class="channel-subtitle">Text Channel</span>
+              </div>
+              <div class="channel-actions-inline">
+                <button id="quickJoinVoiceBtn" class="primary sm">Join Voice</button>
+                <button id="quickShareScreenBtn" class="primary alt sm">Share Screen</button>
+              </div>
+            </div>
+
             <div id="activeScreenNotice" class="live-banner hidden">
               <div><b>Live screen sedang berlangsung</b><span id="liveScreenNames">Klik join voice untuk menonton.</span></div>
               <button id="watchScreenBtn" class="primary sm">Join & Watch</button>
             </div>
+
             <div id="screenDock" class="screen-dock hidden">
-              <div class="panel-head"><h2>Live Screen Share</h2><button id="closeScreenDock" class="icon-btn">×</button></div>
+              <div class="screen-head"><div><b>Live Stage</b><span>Screen share / watch party</span></div><button id="closeScreenDock" class="icon-btn">×</button></div>
               <div id="remoteScreens" class="screen-grid"></div>
             </div>
+
+            <div id="voiceStagePanel" class="voice-stage-card hidden">
+              <div class="stage-copy"><b>Voice Stage</b><span>Masuk voice untuk ngobrol, streaming lagu, nonton YouTube, atau share screen.</span></div>
+              <div class="stage-actions"><button id="stageMusicBtn" class="soft-btn">Buka Musik</button><button id="stageScreenBtn" class="primary sm">Share Screen</button></div>
+            </div>
+
             <div id="chatMessages" class="messages"></div>
             <form id="chatForm" class="chat-form"><input id="chatInput" placeholder="Tulis pesan..." /><button class="primary">Kirim</button></form>
           </section>
-          <aside class="members panel">
+
+          <aside class="right-sidebar panel">
             <h2>Members</h2><div id="memberList" class="list compact"></div>
             <div class="line"></div>
-            <h2>Voice Room</h2>
+            <h2>Voice</h2>
             <div id="voiceState" class="voice-box"><p>Pilih voice channel.</p></div>
-            <div class="voice-actions">
+            <div class="voice-actions compact-actions">
               <button id="joinVoiceBtn" class="primary">Join Voice</button>
               <button id="shareScreenBtn" class="primary alt">Share Screen</button>
               <button id="muteVoiceBtn" class="ghost">Mute</button>
@@ -121,6 +148,16 @@
           </aside>
         </div>
       </section>
+
+      <div id="modalBackdrop" class="modal-backdrop hidden">
+        <div class="modal-card">
+          <button id="modalCloseBtn" class="icon-btn modal-x">×</button>
+          <h2 id="modalTitle">Buat Ruang</h2>
+          <p id="modalDesc" class="hint">Atur kategori dan ruang komunitas kamu.</p>
+          <div id="modalFields"></div>
+          <button id="modalSubmitBtn" class="primary full">Simpan</button>
+        </div>
+      </div>
 
       <section id="friendsPage" class="page hidden">
         <div class="split">

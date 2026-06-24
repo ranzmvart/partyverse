@@ -95,7 +95,7 @@ function showPage(page) {
   if (el) el.classList.remove('hidden');
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === page));
   $('#topTitle').textContent = page === 'auth' ? 'Login' : page[0].toUpperCase()+page.slice(1);
-  $('#topSubtitle').textContent = page === 'community' ? (state.currentCommunity?.name || 'Server') : 'Ryuu Connect';
+  $('#topSubtitle').textContent = page === 'community' ? (state.currentCommunity?.name || 'Server') : 'PartyVerse';
   $('#rail').classList.remove('open');
   if (page === 'servers') loadServers();
   if (page === 'friends') renderFriends();
@@ -190,6 +190,65 @@ function openCommunity(id) {
     showPage('community'); renderCommunity(); renderMusicState(); renderLiveScreenNotice(); if(state.musicMode==='host') handleHostMusic(state.roomMusic);
   });
 }
+
+function isCommunityOwner(){
+  return !!(state.currentCommunity && state.me && (state.currentCommunity.owner === state.me.username || state.me.owner));
+}
+function openModal({ title, desc, fields, submitText, onSubmit }){
+  const bg = $('#modalBackdrop');
+  $('#modalTitle').textContent = title;
+  $('#modalDesc').textContent = desc || '';
+  $('#modalFields').innerHTML = fields;
+  $('#modalSubmitBtn').textContent = submitText || 'Simpan';
+  $('#modalSubmitBtn').onclick = onSubmit;
+  bg.classList.remove('hidden');
+  const first = $('#modalFields input, #modalFields select');
+  setTimeout(()=>first?.focus?.(),50);
+}
+function closeModal(){ $('#modalBackdrop')?.classList.add('hidden'); }
+$('#modalCloseBtn') && ($('#modalCloseBtn').onclick = closeModal);
+$('#modalBackdrop') && ($('#modalBackdrop').onclick = (e)=>{ if(e.target.id==='modalBackdrop') closeModal(); });
+function categoryOptions(type=''){
+  const cats = state.currentCommunity?.categories || [];
+  return cats.filter(c => !type || c.type === type).map(c=>`<option value="${c.id}">${escapeHtml(c.name)} • ${c.type}</option>`).join('');
+}
+function openCreateCategory(defaultType='text'){
+  if(!isCommunityOwner()) return toast('Hanya owner server yang bisa membuat kategori','bad');
+  openModal({
+    title: 'Buat Kategori',
+    desc: 'Pisahkan ruang chat dan voice agar server lebih rapi.',
+    fields: `<label>Nama kategori</label><input id="modalCategoryName" placeholder="Contoh: Lobby, Gaming, Music" /><label>Tipe</label><select id="modalCategoryType"><option value="text" ${defaultType==='text'?'selected':''}>Text / Chat</option><option value="voice" ${defaultType==='voice'?'selected':''}>Voice / Stage</option></select>`,
+    submitText: 'Buat Kategori',
+    onSubmit: ()=>{
+      socket.emit('community:category-create',{communityId: state.currentCommunity.id, name: $('#modalCategoryName').value, type: $('#modalCategoryType').value},(r)=>{
+        if(!r?.ok) return toast(r.error,'bad');
+        state.currentCommunity = r.community;
+        closeModal(); renderCommunity(); toast('Kategori dibuat');
+      });
+    }
+  });
+}
+function openCreateChannel(categoryId=''){
+  if(!isCommunityOwner()) return toast('Hanya owner server yang bisa membuat ruang','bad');
+  const cat = (state.currentCommunity?.categories||[]).find(c=>c.id===categoryId);
+  const options = (state.currentCommunity?.categories||[]).map(c=>`<option value="${c.id}" ${c.id===categoryId?'selected':''}>${escapeHtml(c.name)} • ${c.type}</option>`).join('');
+  openModal({
+    title: 'Buat Ruang Baru',
+    desc: 'Ruang text untuk chat. Ruang voice untuk ngobrol, musik, nonton YouTube, dan share screen.',
+    fields: `<label>Nama ruang</label><input id="modalChannelName" placeholder="contoh: ngobrol, musik, mabar" /><label>Kategori</label><select id="modalChannelCategory">${options}</select>`,
+    submitText: 'Buat Ruang',
+    onSubmit: ()=>{
+      socket.emit('community:channel-create',{communityId: state.currentCommunity.id, name: $('#modalChannelName').value, categoryId: $('#modalChannelCategory').value, type: cat?.type || 'text'},(r)=>{
+        if(!r?.ok) return toast(r.error,'bad');
+        state.currentCommunity = r.community;
+        if(r.channel.type==='text') state.currentChannel = r.channel.id;
+        if(r.channel.type==='voice') state.voiceChannel = r.channel.id;
+        closeModal(); renderCommunity(); renderMessages(); toast('Ruang dibuat');
+      });
+    }
+  });
+}
+
 function ensureDefaultVoiceChannel(){
   if(!state.currentCommunity) return;
   if(!state.voiceChannel || !state.currentCommunity.channels.some(ch=>ch.id===state.voiceChannel && ch.type==='voice')){
@@ -205,20 +264,42 @@ function renderLiveScreenNotice(){
   if(!screenPeople.length){ notice.classList.add('hidden'); return; }
   if(!state.voiceChannel) state.voiceChannel = screenPeople[0].channelId;
   $('#liveScreenNames').textContent = screenPeople.map(p=>`${p.username} (${p.channelName || 'voice'})`).join(', ');
+  $('#watchScreenBtn').onclick = () => { state.voiceChannel = screenPeople[0].channelId; joinVoice(); };
   notice.classList.remove('hidden');
 }
 function renderCommunity() {
   const c = state.currentCommunity; if(!c) return;
   ensureDefaultVoiceChannel();
   $('#communityName').textContent = c.name; $('#communityCode').textContent = c.code;
-  $('#textChannels').innerHTML = c.channels.filter(ch=>ch.type==='text').map(ch=>`<button class="channel ${state.currentChannel===ch.id?'active':''}" data-channel="${ch.id}"># ${ch.name}<span>›</span></button>`).join('');
-  $('#voiceChannels').innerHTML = c.channels.filter(ch=>ch.type==='voice').map(ch=>`<button class="channel ${state.voiceChannel===ch.id?'active':''}" data-voice="${ch.id}"><span>Voice: ${ch.name}</span><span>${state.inVoice && state.voiceChannel===ch.id?'Connected':'Ready'}</span></button>`).join('') || '<p class="hint">Tidak ada voice channel.</p>';
-  $('#memberList').innerHTML = c.members.map(u=>`<div class="item"><div class="avatar small">${u[0].toUpperCase()}</div><div class="item-main"><b>${u}</b><span>${u===c.owner?'Owner':'Member'}</span></div></div>`).join('');
+  const cats = (c.categories && c.categories.length ? c.categories : [
+    { id:'default_text', name:'Text Channels', type:'text' },
+    { id:'default_voice', name:'Voice Channels', type:'voice' }
+  ]);
+  const canManage = isCommunityOwner();
+  $('#categoryList').innerHTML = cats.map(cat=>{
+    const channels = c.channels.filter(ch => (ch.categoryId || (ch.type==='voice'?'default_voice':'default_text')) === cat.id || (!ch.categoryId && ch.type === cat.type));
+    const channelHtml = channels.map(ch=>{
+      const active = ch.type === 'text' ? state.currentChannel === ch.id : state.voiceChannel === ch.id;
+      const isVoice = ch.type === 'voice';
+      const live = (state.voiceLive?.channels||[]).find(v=>v.channelId===ch.id);
+      const liveText = live?.screenShares?.length ? 'Live' : (live?.participants?.length ? `${live.participants.length}` : '');
+      return `<button class="channel ${active?'active':''} ${isVoice?'voice-channel':''}" data-${isVoice?'voice':'channel'}="${ch.id}"><span class="chan-icon">${isVoice?'◖':'#'}</span><span class="chan-name">${escapeHtml(ch.name)}</span>${liveText?`<span class="live-dot">${liveText}</span>`:'<span>›</span>'}</button>`;
+    }).join('') || `<p class="hint tiny">Belum ada ruang ${cat.type === 'voice' ? 'voice' : 'chat'}.</p>`;
+    return `<div class="category-group"><div class="category-head"><span>${escapeHtml(cat.name)}</span>${canManage?`<button class="cat-plus" data-new-channel="${cat.id}">＋</button>`:''}</div>${channelHtml}</div>`;
+  }).join('');
+  $('#openCreateCategoryBtn').style.display = canManage ? '' : 'none';
+  $('#openCreateChannelBtn').style.display = canManage ? '' : 'none';
   $$('[data-channel]').forEach(b=>b.onclick=()=>{state.currentChannel=b.dataset.channel; renderCommunity(); renderMessages();});
   $$('[data-voice]').forEach(b=>b.onclick=()=>{state.voiceChannel=b.dataset.voice; joinVoice(); renderCommunity();});
+  $$('[data-new-channel]').forEach(b=>b.onclick=(e)=>{e.stopPropagation(); openCreateChannel(b.dataset.newChannel);});
   renderLiveScreenNotice();
-  const ch = c.channels.find(x=>x.id===state.currentChannel);
-  $('#channelTitle').textContent = ch ? `# ${ch.name}` : '# general';
+  const ch = c.channels.find(x=>x.id===state.currentChannel) || c.channels.find(x=>x.type==='text');
+  const vch = c.channels.find(x=>x.id===state.voiceChannel);
+  if(ch && !state.currentChannel) state.currentChannel = ch.id;
+  $('#channelTitle').textContent = ch ? `# ${ch.name}` : (vch ? `◖ ${vch.name}` : '# general');
+  $('#channelType').textContent = ch ? 'Text Channel' : 'Voice Stage';
+  $('#voiceStagePanel').classList.toggle('hidden', !state.voiceChannel);
+  $('#memberList').innerHTML = c.members.map(u=>`<div class="item"><div class="avatar small">${u[0].toUpperCase()}</div><div class="item-main"><b>${escapeHtml(u)}</b><span>${u===c.owner?'Owner':'Member'}</span></div></div>`).join('');
   renderMessages();
 }
 function renderMessages() {
@@ -229,6 +310,12 @@ function renderMessages() {
 $('#chatForm').onsubmit = (e) => { e.preventDefault(); const text=$('#chatInput').value; if(!text.trim()) return; socket.emit('message:send',{channelId:state.currentChannel,text},(r)=>{ if(!r?.ok) toast(r.error,'bad'); else $('#chatInput').value=''; }); };
 $('#copyCodeBtn').onclick = () => { navigator.clipboard?.writeText(state.currentCommunity?.code || ''); toast('Code disalin'); };
 $('#leaveCommunityView').onclick = () => showPage('servers');
+$('#openCreateCategoryBtn').onclick = () => openCreateCategory('text');
+$('#openCreateChannelBtn').onclick = () => openCreateChannel();
+$('#quickJoinVoiceBtn').onclick = joinVoice;
+$('#quickShareScreenBtn').onclick = startScreenShare;
+$('#stageMusicBtn').onclick = () => $('#musicWidget').classList.add('open');
+$('#stageScreenBtn').onclick = startScreenShare;
 
 // Friends
 $('#friendSearchBtn').onclick = () => socket.emit('friends:search',{query:$('#friendQuery').value},(r)=>{ $('#friendSearchResult').innerHTML=(r.result||[]).map(u=>`<div class="item">${avatar(u,'avatar small')}<div class="item-main"><b>${u.username}</b><span>Player</span></div><button class="primary sm" data-addfriend="${u.username}">Add</button></div>`).join('')||'<p class="hint">Tidak ada hasil.</p>'; $$('[data-addfriend]').forEach(b=>b.onclick=()=>socket.emit('friends:add',{username:b.dataset.addfriend},(x)=>{toast(x.ok?'Request dikirim':x.error,x.ok?'good':'bad')})); });
@@ -253,7 +340,7 @@ $('#listenHostBtn').onclick=()=>setMusicMode('host'); $('#selfStreamBtn').onclic
 $('#musicSearchBtn').onclick = () => { const query=$('#musicSearch').value; socket.emit('music:search',{query},(r)=>{ if(!r.ok)return toast(r.error,'bad'); renderMusicResults(r.videos||[]); }); };
 function renderMusicResults(videos){ $('#musicResults').innerHTML=videos.map(v=>`<div class="music-item"><img src="${v.thumbnail||''}" onerror="this.style.display='none'"><div class="item-main"><b>${v.title}</b><span>${v.author} • ${v.duration}</span></div><button class="ghost sm" data-play-self="${v.videoId}" data-title="${escapeHtml(v.title)}">Play</button>${state.currentCommunity?`<button class="primary sm" data-play-room="${v.videoId}" data-title="${escapeHtml(v.title)}">Room</button>`:''}</div>`).join(''); $$('[data-play-self]').forEach(b=>b.onclick=()=>{setMusicMode('self'); playVideo(b.dataset.playSelf,b.dataset.title,0);}); $$('[data-play-room]').forEach(b=>b.onclick=()=>{ if(!state.currentCommunity)return; socket.emit('music:room-play',{communityId:state.currentCommunity.id,videoId:b.dataset.playRoom,title:b.dataset.title},(r)=>{ if(!r.ok)return toast(r.error,'bad'); setMusicMode('host'); toast('Musik room diputar'); }); }); }
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function renderMusicState(){ $('#musicHint').textContent = state.currentCommunity ? (state.musicMode==='host'?'Mode: dengar host. Volume tetap milik kamu sendiri.':'Mode: streaming sendiri, tidak ikut musik host.') : 'Belum masuk server: semua user bebas play sendiri.'; if(state.roomMusic) $('#currentTrack').textContent = state.roomMusic.title || 'Room music'; }
+function renderMusicState(){ $('#musicHint').textContent = state.currentCommunity ? (state.musicMode==='host'?'Mode: dengar host / voice stage. Volume tetap milik kamu sendiri.':'Mode: streaming sendiri, tidak ikut musik host.') : 'Belum masuk server: semua user bebas play sendiri.'; if(state.roomMusic) $('#currentTrack').textContent = state.roomMusic.title || 'Room music'; }
 function handleHostMusic(m){ renderMusicState(); if(!m){ stopMusic(); return;} if(state.musicMode!=='host') return; if(m.paused){ if(state.activeVideoId!==m.videoId) playVideo(m.videoId,m.title,m.position||0); setTimeout(pauseMusic,300); } else { const currentTime = state.ytPlayer?.getCurrentTime ? state.ytPlayer.getCurrentTime() : 0; const drift = Math.abs((currentTime||0) - (m.position||0)); if(state.activeVideoId !== m.videoId || drift > 4) playVideo(m.videoId,m.title,m.position||0); }}
 $('#roomPauseBtn').onclick=()=> state.currentCommunity && socket.emit('music:room-pause',{communityId:state.currentCommunity.id},(r)=>toast(r.ok?'Room paused':r.error,r.ok?'good':'bad'));
 $('#roomStopBtn').onclick=()=> state.currentCommunity && socket.emit('music:room-stop',{communityId:state.currentCommunity.id},(r)=>toast(r.ok?'Room stopped':r.error,r.ok?'good':'bad'));
@@ -363,6 +450,10 @@ socket.on('voice:participants', ({participants})=>{
   $('#voiceState').innerHTML=(participants||[]).map(p=>`<div class="voice-person"><b>${p.username}${p.username===state.me?.username?' (Kamu)':''}</b>${p.muted?'<span class="tag muted-tag">Muted</span>':''}${p.screen?'<span class="tag">Share screen</span>':''}</div>`).join('')||'<p>Belum ada di voice.</p>';
   renderCommunity();
 });
+socket.on('screen:start', ({socketId, username})=>{
+  $('#screenDock').classList.remove('hidden');
+  toast(`${username || 'Seseorang'} mulai share screen`);
+});
 socket.on('screen:stop', ({socketId})=>{
   document.getElementById('screen_'+socketId)?.remove();
   if(!$('#remoteScreens')?.children.length) $('#screenDock').classList.add('hidden');
@@ -380,9 +471,13 @@ async function renegotiateAll(){
 async function startScreenShare(){
   try{
     if(!state.inVoice || !state.localStream){ const joined = await joinVoice(); if(!joined?.ok) return; }
+    if(!navigator.mediaDevices?.getDisplayMedia){
+      toast('Screen share belum didukung browser ini. Coba Chrome Android/desktop.', 'bad');
+      return;
+    }
     state.screenStream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: 30 },
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      video: { frameRate: 30, displaySurface: 'browser' },
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false }
     });
     const videoTrack = state.screenStream.getVideoTracks()[0];
     if(videoTrack) videoTrack.onended = stopScreenShare;

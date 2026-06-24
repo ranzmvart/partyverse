@@ -56,9 +56,13 @@ function defaultDB() {
         code: 'RYUUHUB',
         createdAt: now(),
         members: ['ryuu'],
+        categories: [
+          { id: 'cat_text_hub', name: 'Text Channels', type: 'text', order: 1 },
+          { id: 'cat_voice_hub', name: 'Voice Channels', type: 'voice', order: 2 }
+        ],
         channels: [
-          { id: generalId, name: 'general', type: 'text' },
-          { id: voiceId, name: 'voice-lounge', type: 'voice' }
+          { id: generalId, name: 'general', type: 'text', categoryId: 'cat_text_hub' },
+          { id: voiceId, name: 'voice-lounge', type: 'voice', categoryId: 'cat_voice_hub' }
         ],
         music: null
       }
@@ -78,6 +82,7 @@ function loadDB() {
     db = defaultDB();
   }
   ensureOwner();
+  normalizeAllCommunities();
   saveDB();
 }
 function saveDB() {
@@ -95,6 +100,33 @@ function ensureOwner() {
   db.users.ryuu.inventory = db.users.ryuu.inventory || {};
   for (const item of SHOP_ITEMS) db.users.ryuu.inventory[item.id] = Math.max(db.users.ryuu.inventory[item.id] || 0, 1);
   db.users.ryuu.equipped = db.users.ryuu.equipped || { frame: 'frame_royal', badge: 'badge_founder', theme: 'theme_cyber' };
+}
+
+function normalizeCommunity(c) {
+  c.categories = c.categories || [];
+  c.channels = c.channels || [];
+  const hasTextCat = c.categories.some(cat => cat.type === 'text');
+  const hasVoiceCat = c.categories.some(cat => cat.type === 'voice');
+  if (!hasTextCat) c.categories.push({ id: id('cat'), name: 'Text Channels', type: 'text', order: 1 });
+  if (!hasVoiceCat) c.categories.push({ id: id('cat'), name: 'Voice Channels', type: 'voice', order: 2 });
+  const textCat = c.categories.find(cat => cat.type === 'text')?.id;
+  const voiceCat = c.categories.find(cat => cat.type === 'voice')?.id;
+  for (const ch of c.channels) {
+    if (!ch.categoryId) ch.categoryId = ch.type === 'voice' ? voiceCat : textCat;
+  }
+  if (!c.channels.some(ch => ch.type === 'text')) {
+    const chId = id('text');
+    c.channels.push({ id: chId, name: 'general', type: 'text', categoryId: textCat });
+    db.messages[chId] = db.messages[chId] || [];
+  }
+  if (!c.channels.some(ch => ch.type === 'voice')) {
+    c.channels.push({ id: id('voice'), name: 'voice-lounge', type: 'voice', categoryId: voiceCat });
+  }
+  c.categories.sort((a,b)=>(a.order||0)-(b.order||0));
+  return c;
+}
+function normalizeAllCommunities() {
+  for (const c of Object.values(db.communities || {})) normalizeCommunity(c);
 }
 function createUserRecord(username, pin, owner = false) {
   return {
@@ -122,7 +154,7 @@ const io = new Server(server, {
   maxHttpBufferSize: 4e6
 });
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/health', (_, res) => res.json({ ok: true, app: 'Ryuu Connect', ts: now() }));
+app.get('/health', (_, res) => res.json({ ok: true, app: 'PartyVerse', ts: now() }));
 app.get('*', (_, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 const sockets = new Map(); // socket.id -> username
@@ -181,8 +213,17 @@ function joinedCommunities(username) {
   return Object.values(db.communities).filter(c => (c.members || []).includes(username));
 }
 function communityView(c) {
+  normalizeCommunity(c);
   return {
-    id: c.id, name: c.name, owner: c.owner, code: c.code, members: c.members || [], channels: c.channels || [], music: getMusicState(c), voiceLive: getVoiceLive(c)
+    id: c.id,
+    name: c.name,
+    owner: c.owner,
+    code: c.code,
+    members: c.members || [],
+    categories: c.categories || [],
+    channels: c.channels || [],
+    music: getMusicState(c),
+    voiceLive: getVoiceLive(c)
   };
 }
 function getMusicState(c) {
@@ -330,7 +371,23 @@ io.on('connection', (socket) => {
     const tId = id('text');
     const vId = id('voice');
     const code = crypto.randomBytes(3).toString('hex').toUpperCase();
-    db.communities[cId] = { id: cId, name, owner: username, code, createdAt: now(), members: [username], channels: [ { id: tId, name: 'general', type: 'text' }, { id: vId, name: 'voice', type: 'voice' } ], music: null };
+    db.communities[cId] = {
+      id: cId,
+      name,
+      owner: username,
+      code,
+      createdAt: now(),
+      members: [username],
+      categories: [
+        { id: 'cat_text_' + cId, name: 'Text Channels', type: 'text', order: 1 },
+        { id: 'cat_voice_' + cId, name: 'Voice Channels', type: 'voice', order: 2 }
+      ],
+      channels: [
+        { id: tId, name: 'general', type: 'text', categoryId: 'cat_text_' + cId },
+        { id: vId, name: 'voice-lounge', type: 'voice', categoryId: 'cat_voice_' + cId }
+      ],
+      music: null
+    };
     db.messages[tId] = [];
     db.users[username].stats.communities = (db.users[username].stats.communities || 0) + 1;
     saveDB();
@@ -356,6 +413,39 @@ io.on('connection', (socket) => {
     if (!c || !c.members.includes(socket.data.username)) return cb({ ok: false, error: 'Tidak punya akses.' });
     socket.join(`comm:${c.id}`);
     cb({ ok: true, community: communityView(c), messages: Object.fromEntries((c.channels || []).filter(ch => ch.type === 'text').map(ch => [ch.id, db.messages[ch.id] || []])), music: getMusicState(c), voiceLive: getVoiceLive(c) });
+  });
+
+
+  socket.on('community:category-create', (data, cb = () => {}) => {
+    if (requireUser(socket, cb)) return;
+    const c = db.communities[data?.communityId];
+    if (!c || !c.members.includes(socket.data.username)) return cb({ ok: false, error: 'Server tidak valid.' });
+    if (c.owner !== socket.data.username && !db.users[socket.data.username].owner) return cb({ ok: false, error: 'Hanya owner server yang bisa membuat kategori.' });
+    normalizeCommunity(c);
+    const type = data?.type === 'voice' ? 'voice' : 'text';
+    const name = cleanText(data?.name, 40) || (type === 'voice' ? 'Voice Category' : 'Text Category');
+    const order = Math.max(0, ...c.categories.map(x => x.order || 0)) + 1;
+    c.categories.push({ id: id('cat'), name, type, order });
+    saveDB();
+    emitCommunity(c);
+    cb({ ok: true, community: communityView(c) });
+  });
+
+  socket.on('community:channel-create', (data, cb = () => {}) => {
+    if (requireUser(socket, cb)) return;
+    const c = db.communities[data?.communityId];
+    if (!c || !c.members.includes(socket.data.username)) return cb({ ok: false, error: 'Server tidak valid.' });
+    if (c.owner !== socket.data.username && !db.users[socket.data.username].owner) return cb({ ok: false, error: 'Hanya owner server yang bisa membuat ruang.' });
+    normalizeCommunity(c);
+    const category = c.categories.find(cat => cat.id === data?.categoryId) || c.categories.find(cat => cat.type === data?.type) || c.categories[0];
+    const type = category?.type === 'voice' ? 'voice' : 'text';
+    const name = safeName(data?.name) || (type === 'voice' ? 'voice-room' : 'new-chat');
+    const channel = { id: id(type === 'voice' ? 'voice' : 'text'), name, type, categoryId: category.id };
+    c.channels.push(channel);
+    if (type === 'text') db.messages[channel.id] = [];
+    saveDB();
+    emitCommunity(c);
+    cb({ ok: true, channel, community: communityView(c) });
   });
 
   socket.on('message:send', (data, cb = () => {}) => {
@@ -575,6 +665,6 @@ function leaveVoice(socket) {
 }
 
 server.listen(PORT, HOST, () => {
-  console.log(`Ryuu Connect ready on http://${HOST}:${PORT}`);
+  console.log(`PartyVerse ready on http://${HOST}:${PORT}`);
   console.log(`Data path: ${DB_FILE}`);
 });
