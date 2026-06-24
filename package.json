@@ -1,7 +1,7 @@
 {
-  "name": "ryuu-connect-discord-like",
-  "version": "1.5.0",
-  "description": "PartyVerse simple mobile UI and screen share visibility patch",
+  "name": "partyverse-discord-inspired",
+  "version": "2.0.0",
+  "description": "PartyVerse Discord-inspired community app with original branding",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

@@ -1,13 +1,17 @@
-# PartyVerse v1.5 - Simple UI + Mobile Share Patch
+# PartyVerse v2.0 — Discord-inspired UI
 
-Patch ini fokus ke UI/UX lebih sederhana dan area share screen yang selalu terlihat di HP/laptop.
+Aplikasi komunitas original bergaya modern: server, category, text/voice channel, voice, mute, music, YouTube watch party, screen share, friends, profile, dan persistent data.
 
-## Perubahan
-- Layout server dibuat lebih simpel dan tidak menumpuk.
-- Area share screen dibuat menempel dan mudah terlihat.
-- Tombol utama disederhanakan: Ruang, Voice, YouTube, Share.
-- Jika browser mendukung `getDisplayMedia`, Share memakai screen share asli.
-- Jika browser HP tidak mendukung screen share asli, aplikasi mencoba fallback kamera HP agar tetap bisa menampilkan sesuatu ke room.
+## Deploy Railway
 
-## Catatan penting
-Screen share asli di web tetap bergantung dukungan browser/OS dan HTTPS. Untuk hasil terbaik pakai Chrome/Edge desktop atau Chrome Android terbaru di domain HTTPS Railway.
+Upload isi folder ini ke GitHub, lalu deploy ke Railway.
+
+Gunakan Volume untuk data permanen:
+
+```
+/app/data
+```
+
+## Catatan
+
+UI dibuat Discord-inspired dengan nama/warna/branding PartyVerse sendiri dan tanpa aset/logo Discord.

@@ -91,6 +91,7 @@ function showApp() {
 }
 function showPage(page) {
   if (!state.me && page !== 'auth') page = 'auth';
+  document.body.classList.toggle('in-community', page === 'community');
   state.page = page;
   $$('.page').forEach(p => p.classList.add('hidden'));
   const el = $(`#${page}Page`);
