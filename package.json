@@ -1,0 +1,19 @@
+{
+  "name": "ryuu-connect-discord-like",
+  "version": "1.0.0",
+  "description": "Ryuu Connect - Discord-like community app with voice, screen share, shared music, profiles, friends, shop, crates, and realtime chat.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": "22.x",
+    "npm": "10.x"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "yt-search": "^2.13.1"
+  }
+}

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <meta name="theme-color" content="#090d18" />
+  <title>Ryuu Connect</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="boot" class="boot">
+    <div class="boot-card">
+      <div class="logo-orb">R</div>
+      <h1>Ryuu Connect</h1>
+      <p>Community voice, chat, music, screen share.</p>
+      <div class="loader"></div>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <aside class="rail" id="rail">
+      <div class="brand"><div class="logo-orb mini">R</div><div><b>Ryuu Connect</b><span>Community Arena</span></div></div>
+      <div class="me-card" id="miniProfile"></div>
+      <nav class="nav">
+        <button data-page="home" class="nav-btn active">Home</button>
+        <button data-page="servers" class="nav-btn">Servers</button>
+        <button data-page="friends" class="nav-btn">Friends</button>
+        <button data-page="profile" class="nav-btn">Profile</button>
+        <button data-page="shop" class="nav-btn">Shop</button>
+        <button data-page="inventory" class="nav-btn">Inventory</button>
+        <button data-page="crates" class="nav-btn">Crates</button>
+        <button data-page="leaderboard" class="nav-btn">Leaderboard</button>
+      </nav>
+      <button id="logoutBtn" class="ghost full">Logout</button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button id="mobileMenu" class="icon-btn">☰</button>
+        <div><b id="topTitle">Home</b><span id="topSubtitle">Ryuu Connect</span></div>
+        <div class="status-dot" id="netStatus">Connecting</div>
+      </header>
+
+      <section id="authPage" class="page auth-page">
+        <div class="hero-card auth-card">
+          <div class="logo-orb">R</div>
+          <h1>Ryuu Connect</h1>
+          <p>Discord-like community app buatan kamu: chat realtime, voice, share screen, musik bersama, shop, crates, friends.</p>
+          <div class="tabs"><button class="tab active" data-auth="login">Login</button><button class="tab" data-auth="register">Daftar</button></div>
+          <input id="authUsername" placeholder="username" autocomplete="username" />
+          <input id="authPin" placeholder="PIN" autocomplete="current-password" type="password" />
+          <button id="authSubmit" class="primary full">Masuk</button>
+          <p class="hint">Owner: <b>ryuu</b> / PIN <b>291206</b></p>
+        </div>
+      </section>
+
+      <section id="homePage" class="page">
+        <div class="hero-card">
+          <span class="eyebrow">COMMUNITY</span>
+          <h1>Bangun komunitasmu sendiri.</h1>
+          <p>Chat, voice, share screen, musik bersama, friends, shop, crates, dan profil pemain dalam satu aplikasi.</p>
+          <div class="hero-actions">
+            <button class="primary" data-page="servers">Masuk Server</button>
+            <button class="ghost" id="quickCreateServer">Buat Server</button>
+          </div>
+        </div>
+        <div class="grid cards3">
+          <div class="stat-card"><b>Voice</b><span>WebRTC P2P voice room</span></div>
+          <div class="stat-card"><b>Screen Share</b><span>Share layar dari voice channel</span></div>
+          <div class="stat-card"><b>Music Sync</b><span>Host bisa putar lagu bersama</span></div>
+        </div>
+      </section>
+
+      <section id="serversPage" class="page hidden">
+        <div class="split">
+          <div class="panel">
+            <div class="panel-head"><h2>Server Kamu</h2><button id="refreshServers" class="ghost">Refresh</button></div>
+            <div id="serverList" class="list"></div>
+          </div>
+          <div class="panel">
+            <h2>Buat / Join Server</h2>
+            <input id="serverName" placeholder="Nama server baru" />
+            <button id="createServerBtn" class="primary full">Buat Server</button>
+            <div class="line"></div>
+            <input id="joinCode" placeholder="Kode invite / server code" />
+            <button id="joinServerBtn" class="ghost full">Join Server</button>
+            <p class="hint">Public default: RYUUHUB</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="communityPage" class="page hidden community-page">
+        <div class="server-layout">
+          <aside class="channels panel">
+            <div class="panel-head"><h2 id="communityName">Server</h2><button id="copyCodeBtn" class="ghost sm">Copy Code</button></div>
+            <div class="tag" id="communityCode">------</div>
+            <h3>Text</h3><div id="textChannels" class="channel-list"></div>
+            <h3>Voice</h3><div id="voiceChannels" class="channel-list"></div>
+            <button id="leaveCommunityView" class="ghost full">Kembali</button>
+          </aside>
+          <section class="chat panel">
+            <div class="panel-head"><h2 id="channelTitle"># general</h2><div class="pill" id="channelType">Text</div></div>
+            <div id="chatMessages" class="messages"></div>
+            <form id="chatForm" class="chat-form"><input id="chatInput" placeholder="Tulis pesan..." /><button class="primary">Kirim</button></form>
+          </section>
+          <aside class="members panel">
+            <h2>Members</h2><div id="memberList" class="list compact"></div>
+            <div class="line"></div>
+            <h2>Voice Room</h2>
+            <div id="voiceState" class="voice-box"><p>Pilih voice channel.</p></div>
+            <div class="voice-actions">
+              <button id="joinVoiceBtn" class="primary">Join Voice</button>
+              <button id="leaveVoiceBtn" class="ghost">Leave</button>
+              <button id="shareScreenBtn" class="ghost">Share Screen</button>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="friendsPage" class="page hidden">
+        <div class="split">
+          <div class="panel"><h2>Teman</h2><div id="friendList" class="list"></div><h3>Request</h3><div id="friendRequests" class="list"></div></div>
+          <div class="panel"><h2>Tambah Teman</h2><input id="friendQuery" placeholder="Cari username" /><button id="friendSearchBtn" class="primary full">Cari</button><div id="friendSearchResult" class="list"></div></div>
+        </div>
+      </section>
+
+      <section id="profilePage" class="page hidden">
+        <div class="split">
+          <div class="panel profile-panel"><div id="profileBig"></div></div>
+          <div class="panel"><h2>Edit Profil</h2><input type="file" id="avatarInput" accept="image/*" /><textarea id="bioInput" placeholder="Bio singkat"></textarea><button id="saveProfileBtn" class="primary full">Simpan Profil</button></div>
+        </div>
+      </section>
+
+      <section id="shopPage" class="page hidden"><div class="panel"><div class="panel-head"><h2>Shop</h2><span class="hint">Beli item cosmetic dan crate</span></div><div id="shopGrid" class="shop-grid"></div></div></section>
+      <section id="inventoryPage" class="page hidden"><div class="panel"><h2>Inventory</h2><div id="inventoryGrid" class="shop-grid"></div></div></section>
+      <section id="cratesPage" class="page hidden"><div class="panel"><h2>Open Crate</h2><div id="crateStage" class="crate-stage"><div class="case-box">RYUU</div><div id="crateReward" class="reward-text">Pilih crate dari inventory untuk dibuka.</div></div></div></section>
+      <section id="leaderboardPage" class="page hidden"><div class="panel"><h2>Leaderboard Top 100</h2><div id="leaderboardList" class="list"></div></div></section>
+    </main>
+
+    <div id="musicWidget" class="music-widget mini-mode">
+      <button id="musicFab" class="music-fab">♪</button>
+      <div class="music-panel">
+        <div class="panel-head"><h2>Music Player</h2><button id="musicClose" class="icon-btn">×</button></div>
+        <div class="tabs"><button id="listenHostBtn" class="tab active">Dengar Host</button><button id="selfStreamBtn" class="tab">Streaming Sendiri</button></div>
+        <p id="musicHint" class="hint">Belum masuk server: semua user bebas play sendiri.</p>
+        <div class="volume-row"><b>Volume</b><input id="volumeSlider" type="range" min="0" max="100" value="70" /><span id="volumeText">70%</span></div>
+        <input id="musicSearch" placeholder="Cari lagu YouTube..." />
+        <button id="musicSearchBtn" class="primary full">Cari Lagu</button>
+        <div id="musicResults" class="music-results"></div>
+        <div class="line"></div>
+        <div class="music-current"><b id="currentTrack">Belum ada lagu</b><div class="music-buttons"><button id="roomPauseBtn" class="ghost sm">Pause Room</button><button id="roomStopBtn" class="ghost sm">Stop Room</button></div></div>
+        <div id="ytBox" class="yt-box"><div id="ytPlayer"></div></div>
+      </div>
+    </div>
+
+    <div id="screenDock" class="screen-dock hidden"><div class="panel-head"><h2>Screen Share</h2><button id="closeScreenDock" class="icon-btn">×</button></div><div id="remoteScreens" class="screen-grid"></div></div>
+    <div id="toastBox" class="toast-box"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="/client.js"></script>
+</body>
+</html>
