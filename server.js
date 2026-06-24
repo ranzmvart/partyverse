@@ -182,7 +182,7 @@ function joinedCommunities(username) {
 }
 function communityView(c) {
   return {
-    id: c.id, name: c.name, owner: c.owner, code: c.code, members: c.members || [], channels: c.channels || [], music: getMusicState(c)
+    id: c.id, name: c.name, owner: c.owner, code: c.code, members: c.members || [], channels: c.channels || [], music: getMusicState(c), voiceLive: getVoiceLive(c)
   };
 }
 function getMusicState(c) {
@@ -191,8 +191,27 @@ function getMusicState(c) {
   if (!m.paused) m.position = Math.max(0, Math.floor((now() - m.startedAt) / 1000));
   return m;
 }
+function getVoiceLive(c) {
+  const channels = [];
+  for (const ch of (c.channels || []).filter(x => x.type === 'voice')) {
+    const room = voice.get(ch.id);
+    const participants = room ? [...room.entries()].map(([socketId, v]) => ({
+      socketId,
+      username: v.username,
+      screen: !!v.screen,
+      muted: !!v.muted,
+      avatar: db.users[v.username]?.avatar || ''
+    })) : [];
+    const screenShares = participants.filter(p => p.screen);
+    if (participants.length || screenShares.length) {
+      channels.push({ channelId: ch.id, channelName: ch.name, participants, screenShares });
+    }
+  }
+  return { channels, hasScreen: channels.some(x => x.screenShares.length) };
+}
 function emitCommunity(c) {
   io.to(`comm:${c.id}`).emit('community:update', communityView(c));
+  io.to(`comm:${c.id}`).emit('community:voice-live', getVoiceLive(c));
 }
 function requireUser(sock, cb) {
   if (!sock.data.username) return cb({ ok: false, error: 'Login dulu.' });
@@ -336,7 +355,7 @@ io.on('connection', (socket) => {
     const c = db.communities[data?.communityId];
     if (!c || !c.members.includes(socket.data.username)) return cb({ ok: false, error: 'Tidak punya akses.' });
     socket.join(`comm:${c.id}`);
-    cb({ ok: true, community: communityView(c), messages: Object.fromEntries((c.channels || []).filter(ch => ch.type === 'text').map(ch => [ch.id, db.messages[ch.id] || []])), music: getMusicState(c) });
+    cb({ ok: true, community: communityView(c), messages: Object.fromEntries((c.channels || []).filter(ch => ch.type === 'text').map(ch => [ch.id, db.messages[ch.id] || []])), music: getMusicState(c), voiceLive: getVoiceLive(c) });
   });
 
   socket.on('message:send', (data, cb = () => {}) => {
@@ -536,6 +555,8 @@ function broadcastVoice(channelId) {
   const room = voice.get(channelId) || new Map();
   const participants = [...room.entries()].map(([socketId, v]) => ({ socketId, username: v.username, screen: !!v.screen, muted: !!v.muted, avatar: db.users[v.username]?.avatar || '' }));
   io.to(`voice:${channelId}`).emit('voice:participants', { channelId, participants });
+  const c = getCommunityForChannel(channelId);
+  if (c) io.to(`comm:${c.id}`).emit('community:voice-live', getVoiceLive(c));
 }
 function leaveVoice(socket) {
   const ch = socket.data.voiceChannel;
@@ -549,6 +570,8 @@ function leaveVoice(socket) {
     broadcastVoice(ch);
   }
   if (!room.size) voice.delete(ch);
+  const c = getCommunityForChannel(ch);
+  if (c) io.to(`comm:${c.id}`).emit('community:voice-live', getVoiceLive(c));
 }
 
 server.listen(PORT, HOST, () => {

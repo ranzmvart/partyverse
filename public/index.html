@@ -26,10 +26,6 @@
         <button data-page="servers" class="nav-btn">Servers</button>
         <button data-page="friends" class="nav-btn">Friends</button>
         <button data-page="profile" class="nav-btn">Profile</button>
-        <button data-page="shop" class="nav-btn">Shop</button>
-        <button data-page="inventory" class="nav-btn">Inventory</button>
-        <button data-page="crates" class="nav-btn">Crates</button>
-        <button data-page="leaderboard" class="nav-btn">Leaderboard</button>
       </nav>
       <button id="logoutBtn" class="ghost full">Logout</button>
     </aside>
@@ -45,7 +41,7 @@
         <div class="hero-card auth-card">
           <div class="logo-orb">R</div>
           <h1>Ryuu Connect</h1>
-          <p>Discord-like community app buatan kamu: chat realtime, voice, share screen, musik bersama, shop, crates, friends.</p>
+          <p>Community app buatan kamu: chat realtime, voice satu klik, share screen, musik bersama, dan friends.</p>
           <div class="tabs"><button class="tab active" data-auth="login">Login</button><button class="tab" data-auth="register">Daftar</button></div>
           <input id="authUsername" placeholder="username" autocomplete="username" />
           <input id="authPin" placeholder="PIN" autocomplete="current-password" type="password" />
@@ -58,7 +54,7 @@
         <div class="hero-card">
           <span class="eyebrow">COMMUNITY</span>
           <h1>Bangun komunitasmu sendiri.</h1>
-          <p>Chat, voice, share screen, musik bersama, friends, shop, crates, dan profil pemain dalam satu aplikasi.</p>
+          <p>Chat, voice, share screen, musik bersama, friends, dan profil pemain dalam satu aplikasi yang bersih.</p>
           <div class="hero-actions">
             <button class="primary" data-page="servers">Masuk Server</button>
             <button class="ghost" id="quickCreateServer">Buat Server</button>
@@ -100,6 +96,10 @@
           </aside>
           <section class="chat panel">
             <div class="panel-head"><h2 id="channelTitle"># general</h2><div class="pill" id="channelType">Text</div></div>
+            <div id="activeScreenNotice" class="live-banner hidden">
+              <div><b>Live screen sedang berlangsung</b><span id="liveScreenNames">Klik join voice untuk menonton.</span></div>
+              <button id="watchScreenBtn" class="primary sm">Join & Watch</button>
+            </div>
             <div id="screenDock" class="screen-dock hidden">
               <div class="panel-head"><h2>Live Screen Share</h2><button id="closeScreenDock" class="icon-btn">×</button></div>
               <div id="remoteScreens" class="screen-grid"></div>
@@ -114,9 +114,9 @@
             <div id="voiceState" class="voice-box"><p>Pilih voice channel.</p></div>
             <div class="voice-actions">
               <button id="joinVoiceBtn" class="primary">Join Voice</button>
-              <button id="leaveVoiceBtn" class="ghost">Leave</button>
+              <button id="shareScreenBtn" class="primary alt">Share Screen</button>
               <button id="muteVoiceBtn" class="ghost">Mute</button>
-              <button id="shareScreenBtn" class="ghost">Share Screen</button>
+              <button id="leaveVoiceBtn" class="ghost">Leave</button>
             </div>
           </aside>
         </div>
@@ -136,10 +136,10 @@
         </div>
       </section>
 
-      <section id="shopPage" class="page hidden"><div class="panel"><div class="panel-head"><h2>Shop</h2><span class="hint">Beli item cosmetic dan crate</span></div><div id="shopGrid" class="shop-grid"></div></div></section>
-      <section id="inventoryPage" class="page hidden"><div class="panel"><h2>Inventory</h2><div id="inventoryGrid" class="shop-grid"></div></div></section>
-      <section id="cratesPage" class="page hidden"><div class="panel"><h2>Open Crate</h2><div id="crateStage" class="crate-stage"><div class="case-box">RYUU</div><div id="crateReward" class="reward-text">Pilih crate dari inventory untuk dibuka.</div></div></div></section>
-      <section id="leaderboardPage" class="page hidden"><div class="panel"><h2>Leaderboard Top 100</h2><div id="leaderboardList" class="list"></div></div></section>
+      <section id="shopPage" class="page hidden deprecated-page"><div class="panel"><div class="panel-head"><h2>Shop</h2><span class="hint">Beli item cosmetic dan crate</span></div><div id="shopGrid" class="shop-grid"></div></div></section>
+      <section id="inventoryPage" class="page hidden deprecated-page"><div class="panel"><h2>Inventory</h2><div id="inventoryGrid" class="shop-grid"></div></div></section>
+      <section id="cratesPage" class="page hidden deprecated-page"><div class="panel"><h2>Open Crate</h2><div id="crateStage" class="crate-stage"><div class="case-box">RYUU</div><div id="crateReward" class="reward-text">Pilih crate dari inventory untuk dibuka.</div></div></div></section>
+      <section id="leaderboardPage" class="page hidden deprecated-page"><div class="panel"><h2>Leaderboard Top 100</h2><div id="leaderboardList" class="list"></div></div></section>
     </main>
 
     <div id="musicWidget" class="music-widget mini-mode">

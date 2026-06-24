@@ -1,7 +1,7 @@
 {
   "name": "ryuu-connect-discord-like",
-  "version": "1.0.0",
-  "description": "Ryuu Connect - Discord-like community app with voice, screen share, shared music, profiles, friends, shop, crates, and realtime chat.",
+  "version": "1.2.0",
+  "description": "PartyVerse/Ryuu Connect - clean community app with chat, one-click voice, persistent screen share, shared music, profiles and friends.",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

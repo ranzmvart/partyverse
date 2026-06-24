@@ -23,7 +23,9 @@ const state = {
   ytPlayer: null,
   activeVideoId: '',
   activeTrackTitle: '',
-  roomMusic: null
+  roomMusic: null,
+  voiceLive: null,
+  inVoice: false
 };
 
 function toast(text, type='good') {
@@ -118,7 +120,23 @@ socket.on('disconnect', () => setOnline(false));
 socket.on('me', (me) => { state.me = me; renderAll(); });
 socket.on('notify', (n) => toast(n.text || 'Notifikasi'));
 socket.on('invite:community', (inv) => { toast(`${inv.from} mengundang kamu ke ${inv.community.name}`); loadServers(); });
-socket.on('community:update', (c) => { if (state.currentCommunity?.id === c.id) { state.currentCommunity = c; renderCommunity(); } });
+socket.on('community:update', (c) => {
+  if (state.currentCommunity?.id === c.id) {
+    state.currentCommunity = c;
+    state.roomMusic = c.music || state.roomMusic;
+    state.voiceLive = c.voiceLive || state.voiceLive;
+    ensureDefaultVoiceChannel();
+    renderCommunity();
+    renderMusicState();
+    renderLiveScreenNotice();
+    if (state.musicMode === 'host') handleHostMusic(state.roomMusic);
+  }
+  loadServers();
+});
+socket.on('community:voice-live', (live) => {
+  state.voiceLive = live || null;
+  renderLiveScreenNotice();
+});
 socket.on('message:new', ({channelId,msg}) => { state.messages[channelId] = state.messages[channelId] || []; state.messages[channelId].push(msg); if (state.currentChannel === channelId) renderMessages(); });
 socket.on('music:room-state', (m) => { state.roomMusic = m; renderMusicState(); if (state.musicMode === 'host') handleHostMusic(m); });
 
@@ -164,21 +182,41 @@ $('#joinServerBtn').onclick = () => socket.emit('community:join', { code: $('#jo
 function openCommunity(id) {
   socket.emit('community:open', { communityId: id }, (r)=>{
     if(!r?.ok) return toast(r.error || 'Gagal buka server', 'bad');
-    state.currentCommunity = r.community; state.messages = r.messages || {}; state.roomMusic = r.music || null;
+    state.currentCommunity = r.community; state.messages = r.messages || {}; state.roomMusic = r.music || null; state.voiceLive = r.voiceLive || r.community.voiceLive || null;
     const firstText = r.community.channels.find(ch=>ch.type==='text');
     state.currentChannel = firstText?.id || null;
+    ensureDefaultVoiceChannel();
     socket.emit('community:join', { id });
-    showPage('community'); renderCommunity(); renderMusicState(); if(state.musicMode==='host') handleHostMusic(state.roomMusic);
+    showPage('community'); renderCommunity(); renderMusicState(); renderLiveScreenNotice(); if(state.musicMode==='host') handleHostMusic(state.roomMusic);
   });
+}
+function ensureDefaultVoiceChannel(){
+  if(!state.currentCommunity) return;
+  if(!state.voiceChannel || !state.currentCommunity.channels.some(ch=>ch.id===state.voiceChannel && ch.type==='voice')){
+    const vc = state.currentCommunity.channels.find(ch=>ch.type==='voice');
+    if(vc) state.voiceChannel = vc.id;
+  }
+}
+function renderLiveScreenNotice(){
+  const notice = $('#activeScreenNotice');
+  if(!notice) return;
+  const liveChannels = state.voiceLive?.channels || state.currentCommunity?.voiceLive?.channels || [];
+  const screenPeople = liveChannels.flatMap(ch => (ch.screenShares||[]).map(p => ({...p, channelId: ch.channelId, channelName: ch.channelName})));
+  if(!screenPeople.length){ notice.classList.add('hidden'); return; }
+  if(!state.voiceChannel) state.voiceChannel = screenPeople[0].channelId;
+  $('#liveScreenNames').textContent = screenPeople.map(p=>`${p.username} (${p.channelName || 'voice'})`).join(', ');
+  notice.classList.remove('hidden');
 }
 function renderCommunity() {
   const c = state.currentCommunity; if(!c) return;
+  ensureDefaultVoiceChannel();
   $('#communityName').textContent = c.name; $('#communityCode').textContent = c.code;
   $('#textChannels').innerHTML = c.channels.filter(ch=>ch.type==='text').map(ch=>`<button class="channel ${state.currentChannel===ch.id?'active':''}" data-channel="${ch.id}"># ${ch.name}<span>›</span></button>`).join('');
-  $('#voiceChannels').innerHTML = c.channels.filter(ch=>ch.type==='voice').map(ch=>`<button class="channel ${state.voiceChannel===ch.id?'active':''}" data-voice="${ch.id}">🔊 ${ch.name}<span>Join</span></button>`).join('');
+  $('#voiceChannels').innerHTML = c.channels.filter(ch=>ch.type==='voice').map(ch=>`<button class="channel ${state.voiceChannel===ch.id?'active':''}" data-voice="${ch.id}"><span>Voice: ${ch.name}</span><span>${state.inVoice && state.voiceChannel===ch.id?'Connected':'Ready'}</span></button>`).join('') || '<p class="hint">Tidak ada voice channel.</p>';
   $('#memberList').innerHTML = c.members.map(u=>`<div class="item"><div class="avatar small">${u[0].toUpperCase()}</div><div class="item-main"><b>${u}</b><span>${u===c.owner?'Owner':'Member'}</span></div></div>`).join('');
   $$('[data-channel]').forEach(b=>b.onclick=()=>{state.currentChannel=b.dataset.channel; renderCommunity(); renderMessages();});
-  $$('[data-voice]').forEach(b=>b.onclick=()=>{state.voiceChannel=b.dataset.voice; toast('Voice channel dipilih'); renderCommunity();});
+  $$('[data-voice]').forEach(b=>b.onclick=()=>{state.voiceChannel=b.dataset.voice; joinVoice(); renderCommunity();});
+  renderLiveScreenNotice();
   const ch = c.channels.find(x=>x.id===state.currentChannel);
   $('#channelTitle').textContent = ch ? `# ${ch.name}` : '# general';
   renderMessages();
@@ -226,6 +264,7 @@ $('#joinVoiceBtn').onclick = joinVoice;
 $('#leaveVoiceBtn').onclick = leaveVoice;
 $('#muteVoiceBtn').onclick = toggleMute;
 $('#shareScreenBtn').onclick = startScreenShare;
+$('#watchScreenBtn').onclick = () => joinVoice();
 async function getMic(){
   if(state.localStream) return state.localStream;
   state.localStream = await navigator.mediaDevices.getUserMedia({
@@ -237,14 +276,25 @@ async function getMic(){
   return state.localStream;
 }
 async function joinVoice(){
-  if(!state.voiceChannel){ const vc = state.currentCommunity?.channels.find(ch=>ch.type==='voice'); if(vc) state.voiceChannel = vc.id; else return toast('Tidak ada voice channel','bad'); }
+  ensureDefaultVoiceChannel();
+  if(!state.voiceChannel) { toast('Tidak ada voice channel','bad'); return { ok:false }; }
   try{
     await getMic();
-    socket.emit('voice:join',{channelId:state.voiceChannel, muted: state.voiceMuted},(r)=>{ if(!r.ok)return toast(r.error,'bad'); toast('Join voice'); updateMuteUI(); });
-  }catch(e){ toast('Microphone ditolak/browser butuh HTTPS','bad'); }
+    return await new Promise((resolve)=>{
+      socket.emit('voice:join',{channelId:state.voiceChannel, muted: state.voiceMuted},(r)=>{
+        if(!r?.ok){ toast(r.error || 'Gagal join voice','bad'); return resolve({ ok:false }); }
+        state.inVoice = true;
+        toast('Join voice');
+        updateMuteUI();
+        renderCommunity();
+        resolve({ ok:true });
+      });
+    });
+  }catch(e){ toast('Microphone ditolak/browser butuh HTTPS','bad'); return { ok:false }; }
 }
 function leaveVoice(){
   socket.emit('voice:leave');
+  state.inVoice = false;
   for(const pc of state.peers.values()) pc.close();
   state.peers.clear();
   state.localStream?.getTracks().forEach(t=>t.stop()); state.localStream=null;
@@ -254,6 +304,7 @@ function leaveVoice(){
   $('#screenDock').classList.add('hidden');
   $('#voiceState').innerHTML='<p>Keluar dari voice.</p>';
   updateMuteUI();
+  renderCommunity();
 }
 function updateMuteUI(){
   const btn = $('#muteVoiceBtn');
@@ -299,12 +350,18 @@ function attachScreen(id, stream){
   v.srcObject=stream;
   v.play?.().catch(()=>{});
 }
-socket.on('voice:existing-peers', async ({peers})=>{ await getMic().catch(()=>null); peers.forEach(p=>{ if(!state.peers.has(p.socketId)) createPeer(p.socketId,true); }); });
+socket.on('voice:existing-peers', async ({peers})=>{
+  await getMic().catch(()=>null);
+  if((peers||[]).some(p=>p.screen)) { $('#screenDock').classList.remove('hidden'); }
+  peers.forEach(p=>{ if(!state.peers.has(p.socketId)) createPeer(p.socketId,true); });
+});
 socket.on('voice:peer-joined', async ({socketId})=>{ await getMic().catch(()=>null); if(!state.peers.has(socketId)) createPeer(socketId,false); });
 socket.on('voice:signal', async ({from, signal})=>{ let pc=state.peers.get(from); if(!pc) pc=createPeer(from,false); if(signal.sdp){ await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp)); if(signal.sdp.type==='offer'){ const ans=await pc.createAnswer(); await pc.setLocalDescription(ans); socket.emit('voice:signal',{to:from,signal:{sdp:pc.localDescription}}); } } else if(signal.candidate){ try{ await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); }catch(e){} } });
 socket.on('voice:peer-left', ({socketId})=>{ state.peers.get(socketId)?.close(); state.peers.delete(socketId); document.querySelectorAll(`[id^="audio_${socketId}_"]`).forEach(el=>el.remove()); document.getElementById('screen_'+socketId)?.remove(); if(!$('#remoteScreens')?.children.length) $('#screenDock').classList.add('hidden'); });
 socket.on('voice:participants', ({participants})=>{
-  $('#voiceState').innerHTML=participants.map(p=>`<div class="voice-person"><b>${p.username}${p.username===state.me?.username?' (Kamu)':''}</b>${p.muted?'<span class="tag muted-tag">Muted</span>':''}${p.screen?'<span class="tag">Share screen</span>':''}</div>`).join('')||'<p>Belum ada di voice.</p>';
+  state.inVoice = (participants||[]).some(p=>p.username===state.me?.username);
+  $('#voiceState').innerHTML=(participants||[]).map(p=>`<div class="voice-person"><b>${p.username}${p.username===state.me?.username?' (Kamu)':''}</b>${p.muted?'<span class="tag muted-tag">Muted</span>':''}${p.screen?'<span class="tag">Share screen</span>':''}</div>`).join('')||'<p>Belum ada di voice.</p>';
+  renderCommunity();
 });
 socket.on('screen:stop', ({socketId})=>{
   document.getElementById('screen_'+socketId)?.remove();
@@ -322,7 +379,7 @@ async function renegotiateAll(){
 }
 async function startScreenShare(){
   try{
-    if(!state.localStream) await joinVoice();
+    if(!state.inVoice || !state.localStream){ const joined = await joinVoice(); if(!joined?.ok) return; }
     state.screenStream = await navigator.mediaDevices.getDisplayMedia({
       video: { frameRate: 30 },
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
